@@ -1,7 +1,10 @@
+mod api;
+
 #[macro_use]
 extern crate rocket;
 use std::collections::{HashSet};
 
+use api::cors::CORS;
 use rocket::serde::{json::Json, Serialize};
 use rocket_db_pools::{Database, Connection};
 use rocket_db_pools::sqlx::{self, Row};
@@ -23,10 +26,14 @@ struct Word {
 #[database("kbbi")]
 struct KBBI(sqlx::MySqlPool);
 
+/// Catches all OPTION requests in order to get the CORS related Fairing triggered.
+#[options("/<_..>")]
+fn all_options() {
+    /* Intentionally left empty */
+}
+
 #[get("/fix?<word>")]
 async fn kbbi(mut db: Connection<KBBI>, word: &str) -> Json<Task> {
-
-
     // split word by spaces
     let word = word.split_whitespace().collect::<Vec<&str>>();
     // turn each word into Word object
@@ -73,5 +80,5 @@ async fn kbbi(mut db: Connection<KBBI>, word: &str) -> Json<Task> {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().attach(KBBI::init()).mount("/v1", routes![kbbi])
+    rocket::build().attach(KBBI::init()).attach(CORS).mount("/v1", routes![kbbi, all_options])
 }
