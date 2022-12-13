@@ -1,10 +1,15 @@
 mod api;
+mod lex;
 
 #[macro_use]
 extern crate rocket;
-use std::collections::{HashSet};
+use std::collections::{HashMap};
 
 use api::cors::CORS;
+use lex::validator::run_validator;
+use lex::{Lexicon, KIND_MAP};
+use lex::parser::run_parser;
+use lex::renderer::run_renderer;
 use rocket::serde::{json::Json, Serialize};
 use rocket_db_pools::{Database, Connection};
 use rocket_db_pools::sqlx::{self, Row};
@@ -12,14 +17,10 @@ use rocket_db_pools::sqlx::{self, Row};
 #[derive(Serialize)]
 #[derive(Debug)]
 #[serde(crate = "rocket::serde")]
-struct Task {
+struct Task<'a> {
     status: String,
-    data: String,
-}
-
-struct Word {
-    word: String,
-    kind: String,
+    structure: Vec<Lexicon<'a>>,
+    rendered: String,
 }
 
 #[derive(Database)]
@@ -32,49 +33,38 @@ fn all_options() {
     /* Intentionally left empty */
 }
 
-#[get("/fix?<word>")]
-async fn kbbi(mut db: Connection<KBBI>, word: &str) -> Json<Task> {
-    // split word by spaces
-    let word = word.split_whitespace().collect::<Vec<&str>>();
+#[get("/check?<text>")]
+async fn kbbi(mut db: Connection<KBBI>, text: &str) -> Json<Task> {
     // turn each word into Word object
-    let mut word_obj = word.iter().map(|w| Word {
-        word: w.to_string(),
-        kind: "".to_string(),
-    }).collect::<Vec<Word>>();
+    let mut word_obj = run_parser(text);
     // get distinct word list
-    let m: HashSet<&str> = word.into_iter().collect();
-    for name in m {
-        let n = name.to_lowercase();
-        let m = sqlx::query("SELECT kata, tipe FROM kbbi WHERE kata = ?").bind(n).fetch_one(&mut *db).await;
-        if m.is_err() {
-            continue;
-        }
-        let m = m.unwrap();
-        let mw = Word {
-            word: name.to_string(),
-            kind: m.try_get(1).unwrap(),
-        };
-        for w in &mut word_obj {
-            if w.word == mw.word {
-                w.kind = mw.kind.clone();
-            }
+    let mut n_map : HashMap<&str, &str> = HashMap::new();
+
+    let hashmap = KIND_MAP.lock().await;
+
+    for lexicon in &mut word_obj {
+        for lexeme in &mut lexicon.lexemes {
+           if n_map.contains_key(lexeme.word) {
+                lexeme.kind = &n_map[lexeme.word][..]
+           }
+           let m = sqlx::query("SELECT kata, tipe FROM kbbi WHERE kata = ?").bind(lexeme.word).fetch_one(&mut *db).await;
+           if m.is_err() {
+               continue;
+           }
+           let m = m.unwrap();
+           n_map.insert(lexeme.word, hashmap[m.try_get::<&str, usize>(1).unwrap()]);
+           lexeme.kind = &n_map[lexeme.word][..];
         }
     }
 
-    // for each word, add strike tag if kind is empty
-    let word = word_obj.iter().map(|w| {
-        if w.kind.is_empty() {
-            format!("<s>{}</s>", w.word)
-        } else {
-            w.word.to_string()
-        }
-    }).collect::<Vec<String>>();
     // join the words
-    let word = word.join(" ");
+    run_validator(&mut word_obj);
+    let word =run_renderer(&word_obj);
 
     Json(Task {
         status: "success".to_string(),
-        data: word,
+        structure: word_obj,
+        rendered: word,
     })
 }
 
