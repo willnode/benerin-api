@@ -1,20 +1,20 @@
 extern crate rocket;
-use std::collections::HashMap;
 
-use futures::lock::Mutex;
-use once_cell::sync::Lazy;
 use rocket::serde::Serialize;
 
 pub mod parser;
 pub mod renderer;
 pub mod validator;
+pub mod statics;
 
 #[derive(Serialize, Debug)]
 #[serde(crate = "rocket::serde")]
 pub struct Lexicon<'a> {
     pub lexemes: Vec<Lexeme<'a>>,
     pub corrections: Vec<Correction<'a>>,
+    #[serde(skip_serializing_if = "str_is_empty")]
     pub prefix: &'a str,
+    #[serde(skip_serializing_if = "str_is_empty")]
     pub suffix: &'a str,
 }
 
@@ -23,6 +23,7 @@ pub struct Lexicon<'a> {
 pub struct Lexeme<'a> {
     pub word: &'a str,
     pub kind: &'a str,
+    #[serde(skip_serializing_if = "str_is_empty")]
     pub suffix: &'a str,
 }
 
@@ -35,21 +36,12 @@ pub struct Correction<'a> {
     pub suggestion: Option<String>,
 }
 
-pub static KIND_MAP: Lazy<Mutex<HashMap<&str, &str>>> = Lazy::new(|| {
-    let m = HashMap::from([
-        ("", ""),
-        ("a", "a"),
-        ("adv", "adv"),
-        ("n", "n"),
-        ("p", "p"),
-        ("pron", "pron"),
-        ("v", "v"),
-        ("infiks", "infiks"),
-        ("prefiks", "prefiks"),
-        ("sufiks", "sufiks"),
-    ]);
-    Mutex::new(m)
-});
+fn str_is_empty<'a>(metadata: &'a str) -> bool {
+    match metadata {
+      "" => true,
+      _ => false
+    }
+  }
 
 // Correction kind:
 // 1: Unknown (unimplemented)

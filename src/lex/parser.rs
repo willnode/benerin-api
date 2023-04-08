@@ -1,9 +1,8 @@
-use super::{Lexeme, Lexicon};
+use super::{Lexeme, Lexicon, statics::PUNCTUATIONS};
 
 static EMPTY: &str = "";
 
 pub fn run_parser(text: &str) -> Vec<Lexicon> {
-    let punctuations: Vec<char> = ".,;:?!\n".chars().collect::<Vec<char>>();
     let mut lexicons: Vec<Lexicon> = vec![];
     // loop through text
     let mut current_lexicon = Lexicon {
@@ -16,7 +15,7 @@ pub fn run_parser(text: &str) -> Vec<Lexicon> {
     let mut indices = text.char_indices().peekable();
     while let Some((i, c)) = indices.next() {
         // check if character is punctuation
-        if punctuations.contains(&c) {
+        if PUNCTUATIONS.contains(&c) {
             // end of lexicon
             current_lexicon.suffix = &text[i..i + 1];
             lexicons.push(current_lexicon);
@@ -33,7 +32,7 @@ pub fn run_parser(text: &str) -> Vec<Lexicon> {
             let mut i2 = i + 1;
             while let Some((i, c)) = indices.peek() {
                 i2 = *i;
-                if !c.is_whitespace() || punctuations.contains(&c) {
+                if !c.is_whitespace() || PUNCTUATIONS.contains(&c) {
                     break;
                 } else {
                     indices.next();
@@ -51,7 +50,7 @@ pub fn run_parser(text: &str) -> Vec<Lexicon> {
             // get until next character is whitespace or punctuation
             let mut i2 = i;
             while let Some((i, c)) = indices.peek() {
-                if c.is_whitespace() || punctuations.contains(&c) {
+                if c.is_whitespace() || PUNCTUATIONS.contains(&c) {
                     break;
                 } else {
                     i2 = *i + 1;
@@ -59,8 +58,9 @@ pub fn run_parser(text: &str) -> Vec<Lexicon> {
                 }
             }
             // push lexeme
+            let word = &text[i..i2];
             current_lexicon.lexemes.push(Lexeme {
-                word: &text[i..i2],
+                word,
                 kind: EMPTY,
                 suffix: EMPTY,
             });

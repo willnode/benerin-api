@@ -1,13 +1,18 @@
+
 mod api;
 mod lex;
 
 #[macro_use]
 extern crate rocket;
-use std::collections::{HashMap};
+#[macro_use]
+extern crate lazy_static;
+use std::collections::HashMap;
 
 use api::cors::CORS;
+use lex::statics::KIND_MAP;
+
 use lex::validator::run_validator;
-use lex::{Lexicon, KIND_MAP};
+use lex::Lexicon;
 use lex::parser::run_parser;
 use lex::renderer::run_renderer;
 use rocket::serde::{json::Json, Serialize};
@@ -40,19 +45,17 @@ async fn kbbi(mut db: Connection<KBBI>, text: &str) -> Json<Task> {
     // get distinct word list
     let mut n_map : HashMap<&str, &str> = HashMap::new();
 
-    let hashmap = KIND_MAP.lock().await;
-
     for lexicon in &mut word_obj {
         for lexeme in &mut lexicon.lexemes {
            if n_map.contains_key(lexeme.word) {
                 lexeme.kind = &n_map[lexeme.word][..]
            }
-           let m = sqlx::query("SELECT kata, tipe FROM kbbi WHERE kata = ?").bind(lexeme.word).fetch_one(&mut *db).await;
+           let m = sqlx::query("SELECT word, kind FROM kbbi WHERE word = ?").bind(lexeme.word).fetch_one(&mut *db).await;
            if m.is_err() {
                continue;
            }
            let m = m.unwrap();
-           n_map.insert(lexeme.word, hashmap[m.try_get::<&str, usize>(1).unwrap()]);
+           n_map.insert(lexeme.word, KIND_MAP[m.try_get::<&str, usize>(1).unwrap()]);
            lexeme.kind = &n_map[lexeme.word][..];
         }
     }
