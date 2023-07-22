@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 lazy_static = "1.4.0"
+symspell = "0.4.3"
+csv = "1.2.1"
 
 [dependencies.rocket]
 version = "0.5.0-rc.3"
