@@ -393,8 +393,8 @@ impl<T: StringStrategy> SymSpell<T> {
                 && ((suggestions[0].distance == 0)
                     || (self.string_strategy.len(&term_list.lexemes[i].word) == 1))
             {
-                //choose best suggestion
-                suggestion_parts.push(suggestions[0].clone());
+                // already in best suggestion
+                continue;
             } else {
                 let mut suggestion_split_best = if !suggestions.is_empty() {
                     //add original term
