@@ -1,104 +1,57 @@
+use axum::{extract::Query, routing::get, Router, response::Response};
+use hyper::{Method, Server, header, http::HeaderValue};
+use serde::{Deserialize};
+use std::{env, net::SocketAddr};
+use tower_http::cors::{Any, CorsLayer};
 
-mod api;
-mod lex;
-
-#[macro_use]
-extern crate rocket;
 #[macro_use]
 extern crate lazy_static;
-use std::collections::HashMap;
+#[macro_use]
+extern crate derive_builder;
 
-use api::cors::CORS;
-use csv::ReaderBuilder;
-use lex::statics::KIND_MAP;
+mod lex;
+use lex::{transform, SPELLENGINE};
 
-use lex::validator::run_validator;
-use lex::Lexicon;
-use lex::parser::run_parser;
-use lex::renderer::run_renderer;
-use rocket::serde::{json::Json, Serialize};
-use rocket::tokio::fs::File;
-use rocket_db_pools::{Database, Connection};
-use rocket_db_pools::sqlx::{self, Row};
-use symspell::SymSpell;
 
-#[derive(Serialize)]
-#[derive(Debug)]
-#[serde(crate = "rocket::serde")]
-struct Task<'a> {
-    status: String,
-    structure: Vec<Lexicon<'a>>,
-    rendered: String,
+
+#[derive(Debug, Deserialize)]
+struct Params {
+    #[serde(default)]
+    text: String,
 }
 
-#[derive(Database)]
-#[database("kbbi")]
-struct KBBI(sqlx::MySqlPool);
-
-/// Catches all OPTION requests in order to get the CORS related Fairing triggered.
-#[options("/<_..>")]
-fn all_options() {
-    /* Intentionally left empty */
+async fn kbbi(Query(params): Query<Params>) -> Response<String> {
+    let body = transform(&params.text);
+    let body_str = serde_json::to_string(&body).unwrap();
+    let mut res = Response::new(body_str);
+    res.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/json"),
+    );
+    res
 }
 
-#[get("/check?<text>")]
-async fn kbbi(mut db: Connection<KBBI>, text: &str) -> Json<Task> {
-    // turn each word into Word object
-    let mut word_obj = run_parser(text);
-    // get distinct word list
-    let mut n_map : HashMap<&str, &str> = HashMap::new();
-
-    for lexicon in &mut word_obj {
-        for lexeme in &mut lexicon.lexemes {
-           if n_map.contains_key(lexeme.word) {
-                lexeme.kind = &n_map[lexeme.word][..]
-           }
-           let m = sqlx::query("SELECT word, kind FROM kbbi WHERE word = ?").bind(lexeme.word).fetch_one(&mut *db).await;
-           if m.is_err() {
-               continue;
-           }
-           let m = m.unwrap();
-           n_map.insert(lexeme.word, KIND_MAP[m.try_get::<&str, usize>(1).unwrap()]);
-           lexeme.kind = &n_map[lexeme.word][..];
-        }
-    }
-
-    // join the words
-    run_validator(&mut word_obj);
-    let word =run_renderer(&word_obj);
-
-    Json(Task {
-        status: "success".to_string(),
-        structure: word_obj,
-        rendered: word,
-    })
+async fn health() -> &'static str {
+    "ok"
 }
 
-#[launch]
-async fn rocket() -> _ {
-    // load csv file from 3-combword.csv
+#[tokio::main]
+async fn main() {
+    lazy_static::initialize(&SPELLENGINE);
 
-
-     // Create a new SymSpell instance with default settings
-     let mut symspell = SymSpell::default();
-
-     // Read the CSV file using the csv crate
-     let mut reader = ReaderBuilder::new().from_path("foo.csv").unwrap();
- 
-     // Load each word from the CSV file into the SymSpell instance
-     for result in reader.records() {
-         let record = result.unwrap();
-         let word = &record[0];
-         let count = &record[1].parse::<i64>().unwrap_or(1);
-         symspell.load_dictionary(word, *count);
-     }
- 
-     // Correct a misspelled word with maximum edit distance of 2
-     let suggestions = symspell.lookup("speling", Verbosity::Closest, 2);
- 
-
-    
-
-
-    rocket::build().attach(KBBI::init()).attach(CORS).mount("/v1", routes![kbbi, all_options])
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET])
+        .allow_origin(Any);
+    // build our application with a route
+    let app = Router::new()
+        // `GET /` goes to `root`
+        .route("/v1/check", get(kbbi).layer(cors))
+        .route("/health", get(health));
+    let addr_str = env::var("LISTEN").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
+    let addr: SocketAddr = addr_str.parse().unwrap();
+    println!("Listening on {}", addr);
+    Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }

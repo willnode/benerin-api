@@ -1,11 +1,10 @@
-
-
-use std::collections::HashSet;
 use std::collections::HashMap;
+use std::collections::HashSet;
+
+pub static EMPTY_STR: &'static str = "";
 
 lazy_static! {
-    pub static ref PUNCTUATIONS: HashSet<char> =  ".,;:?!\n".chars().collect::<HashSet<char>>();
-
+    pub static ref PUNCTUATIONS: HashSet<char> = ".,;:?!\n".chars().collect::<HashSet<char>>();
     pub static ref KIND_MAP: HashMap<&'static str, &'static str> = HashMap::from([
         ("", ""),
         ("a", "a"),
@@ -19,5 +18,4 @@ lazy_static! {
         ("prefiks", "prefiks"),
         ("sufiks", "sufiks"),
     ]);
-
 }

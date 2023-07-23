@@ -1,6 +1,6 @@
-use super::{Lexeme, Lexicon, statics::PUNCTUATIONS};
+use super::suggestion::{Lexeme, Lexicon};
+use super::statics::{PUNCTUATIONS, EMPTY_STR};
 
-static EMPTY: &str = "";
 
 pub fn run_parser(text: &str) -> Vec<Lexicon> {
     let mut lexicons: Vec<Lexicon> = vec![];
@@ -8,8 +8,8 @@ pub fn run_parser(text: &str) -> Vec<Lexicon> {
     let mut current_lexicon = Lexicon {
         lexemes: vec![],
         corrections: vec![],
-        prefix: EMPTY,
-        suffix: EMPTY,
+        prefix: EMPTY_STR,
+        suffix: EMPTY_STR,
     };
     // loop every character
     let mut indices = text.char_indices().peekable();
@@ -22,8 +22,8 @@ pub fn run_parser(text: &str) -> Vec<Lexicon> {
             current_lexicon = Lexicon {
                 lexemes: vec![],
                 corrections: vec![],
-                prefix: EMPTY,
-                suffix: EMPTY,
+                prefix: EMPTY_STR,
+                suffix: EMPTY_STR,
             };
         }
         // check if character is whitespace
@@ -61,13 +61,13 @@ pub fn run_parser(text: &str) -> Vec<Lexicon> {
             let word = &text[i..i2];
             current_lexicon.lexemes.push(Lexeme {
                 word,
-                kind: EMPTY,
-                suffix: EMPTY,
+                kind: EMPTY_STR,
+                suffix: EMPTY_STR,
             });
         }
     }
 
-    if current_lexicon.lexemes.len() > 0 || current_lexicon.prefix != EMPTY {
+    if current_lexicon.lexemes.len() > 0 || current_lexicon.prefix != EMPTY_STR {
         lexicons.push(current_lexicon);
     }
 
