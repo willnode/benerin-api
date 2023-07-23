@@ -1,7 +1,5 @@
 use std::cmp;
-use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{hash_map::DefaultHasher, HashMap, HashSet};
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::i64;
@@ -12,9 +10,7 @@ use crate::lex::statics::EMPTY_STR;
 
 use super::edit_distance::{DistanceAlgorithm, EditDistance};
 use super::string_strategy::StringStrategy;
-use super::suggestion::Correction;
-use super::suggestion::Lexicon;
-use super::suggestion::Suggestion;
+use super::suggestion::{Correction, Lexicon, Suggestion};
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Verbosity {
@@ -340,10 +336,11 @@ impl<T: StringStrategy> SymSpell<T> {
 
         //translate every term to its best suggestion, otherwise it remains unchanged
         let mut last_combi = false;
+        let mut last_word: Option<Suggestion> = None;
 
         for (i, term) in term_list.lexemes.iter().enumerate() {
             suggestions = self.lookup(term.word, Verbosity::Top, edit_distance_max);
-            let mut suggestion_parts: Vec<Suggestion> = Vec::new();
+            let suggestion: Option<Suggestion>;
             //combi check, always before split
             if i > 0 && !last_combi {
                 let mut suggestions_combi: Vec<Suggestion> = self.lookup(
@@ -356,8 +353,8 @@ impl<T: StringStrategy> SymSpell<T> {
                     edit_distance_max,
                 );
 
-                if !suggestions_combi.is_empty() {
-                    let best1 = suggestion_parts[suggestion_parts.len() - 1].clone();
+                if !suggestions_combi.is_empty() && last_word.is_some() {
+                    let best1 = last_word.clone().unwrap();
                     let best2 = if !suggestions.is_empty() {
                         suggestions[0].clone()
                     } else {
@@ -379,8 +376,16 @@ impl<T: StringStrategy> SymSpell<T> {
                                     > best1.count / self.corpus_word_count * best2.count)))
                     {
                         suggestions_combi[0].distance += 1;
-                        let last_i = suggestion_parts.len() - 1;
-                        suggestion_parts[last_i] = suggestions_combi[0].clone();
+                        let lasti = term_list.corrections.len() - 1;
+                        let sugi = format!(
+                            "{}{}",
+                            suggestions_combi[0].term, term_list.lexemes[i].suffix
+                        );
+                        term_list.corrections[lasti].end_lexeme = i;
+                        term_list.corrections[lasti].suggestion =
+                            Some(Suggestion::new(sugi, 
+                                suggestions_combi[0].distance, 
+                                suggestions_combi[0].count));
                         last_combi = true;
                         continue;
                     }
@@ -394,6 +399,7 @@ impl<T: StringStrategy> SymSpell<T> {
                     || (self.string_strategy.len(&term_list.lexemes[i].word) == 1))
             {
                 // already in best suggestion
+                last_word = None;
                 continue;
             } else {
                 let mut suggestion_split_best = if !suggestions.is_empty() {
@@ -518,7 +524,7 @@ impl<T: StringStrategy> SymSpell<T> {
 
                     if suggestion_split_best.term != EMPTY_STR {
                         //select best suggestion for split pair
-                        suggestion_parts.push(suggestion_split_best.clone());
+                        suggestion = Some(suggestion_split_best.clone());
                     } else {
                         let mut si = Suggestion::empty();
                         // NOTE: this effectively clamps si_count to a certain minimum value, which it can't go below
@@ -530,7 +536,7 @@ impl<T: StringStrategy> SymSpell<T> {
                         si.term = term_list.lexemes[i].word.to_string();
                         si.count = si_count as i64;
                         si.distance = edit_distance_max + 1;
-                        suggestion_parts.push(si);
+                        suggestion = Some(si);
                     }
                 } else {
                     let mut si = Suggestion::empty();
@@ -543,16 +549,21 @@ impl<T: StringStrategy> SymSpell<T> {
                     si.term = term_list.lexemes[i].word.to_string();
                     si.count = si_count as i64;
                     si.distance = edit_distance_max + 1;
-                    suggestion_parts.push(si);
+                    suggestion = Some(si);
                 }
             }
-            if suggestion_parts.len() > 0 {
-                term_list.corrections.push(Correction {
-                    start_lexeme: i,
-                    end_lexeme: i,
-                    r#type: "misspelling",
-                    suggestion: suggestion_parts,
-                });
+            match suggestion {
+                Some(s) => {
+                    let finalsug = format!("{}{}", s.term, term_list.lexemes[i].suffix);
+                    last_word = Some(s);
+                    term_list.corrections.push(Correction {
+                        start_lexeme: i,
+                        end_lexeme: i,
+                        r#type: "misspelling",
+                        suggestion: Some(Suggestion::new(finalsug, 0, 0)),
+                    });
+                }
+                None => {}
             }
         }
     }
@@ -723,5 +734,4 @@ impl<T: StringStrategy> SymSpell<T> {
         s.hash(&mut hasher);
         hasher.finish()
     }
-
 }

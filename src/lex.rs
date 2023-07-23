@@ -29,7 +29,7 @@ fn init_spell_engine() -> SymSpell<UnicodeStringStrategy> {
     spellengine
 }
 
-pub fn transform<'a>(text: &'a str) -> Task<'a> {
+pub fn transform<'a>(text: &'a str, verbose: bool) -> Task<'a> {
     let mut word_obj = run_parser(text);
     for lexicon in &mut word_obj {
         chk_double_space(lexicon);
@@ -38,7 +38,10 @@ pub fn transform<'a>(text: &'a str) -> Task<'a> {
     let word = run_renderer(&word_obj);
     Task {
         status: "ok".to_string(),
-        structure: word_obj,
+        structure: match verbose {
+            true => Some(word_obj),
+            false => None,
+        },
         rendered: word,
     }
 }

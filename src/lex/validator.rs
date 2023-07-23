@@ -13,7 +13,7 @@ pub fn chk_double_space(lexicon: &mut Lexicon) {
                 start_lexeme: i,
                 end_lexeme: i,
                 r#type: "extra-space",
-                suggestion: vec![Suggestion::new(suggestion, 0, 0)],
+                suggestion: Some(Suggestion::new(suggestion, 0, 0)),
             });
         }
     }

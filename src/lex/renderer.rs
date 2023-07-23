@@ -11,12 +11,15 @@ pub fn run_renderer(graph: &Vec<Lexicon>) -> String {
                     text.push_str("<u-x data-type=\"");
                     text.push_str(&correction.r#type);
                     text.push_str("\"");
-                    if correction.suggestion.len() > 0 {
-                        text.push_str(" data-suggestion=\"");
-                        text.push_str(&correction.suggestion[0].term);
-                        text.push_str("\">");
-                    } else {
-                        text.push_str(">");
+                    match &correction.suggestion {
+                        Some(s) => {
+                            text.push_str(" data-suggestion=\"");
+                            text.push_str(&s.term);
+                            text.push_str("\">");
+                        }
+                        None => {
+                            text.push_str(">");
+                        }
                     }
                     text.push_str(&lexeme.word);
                     text.push_str(&lexeme.suffix);

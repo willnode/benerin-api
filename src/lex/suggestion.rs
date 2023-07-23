@@ -4,14 +4,17 @@ use std::cmp::Ordering;
 #[derive(Serialize, Debug)]
 pub struct Task<'a> {
     pub status: String,
-    pub structure: Vec<Lexicon<'a>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub structure: Option<Vec<Lexicon<'a>>>,
     pub rendered: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Suggestion {
     pub term: String,
+    #[serde(skip_serializing)]
     pub distance: i64,
+    #[serde(skip_serializing)]
     pub count: i64,
 }
 
@@ -37,7 +40,7 @@ pub struct Correction<'a> {
     pub start_lexeme: usize,
     pub end_lexeme: usize,
     pub r#type: &'a str,
-    pub suggestion: Vec<Suggestion>,
+    pub suggestion: Option<Suggestion>,
 }
 
 trait CorrectionExt {
@@ -103,3 +106,4 @@ fn str_is_empty<'a>(metadata: &'a str) -> bool {
         _ => false,
     }
 }
+

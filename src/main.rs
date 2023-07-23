@@ -1,6 +1,6 @@
 use axum::{extract::Query, routing::get, Router, response::Response};
 use hyper::{Method, Server, header, http::HeaderValue};
-use serde::{Deserialize};
+use serde::{Deserialize, Deserializer};
 use std::{env, net::SocketAddr};
 use tower_http::cors::{Any, CorsLayer};
 
@@ -21,7 +21,7 @@ struct Params {
 }
 
 async fn kbbi(Query(params): Query<Params>) -> Response<String> {
-    let body = transform(&params.text);
+    let body = transform(&params.text, true);
     let body_str = serde_json::to_string(&body).unwrap();
     let mut res = Response::new(body_str);
     res.headers_mut().insert(
