@@ -1,6 +1,6 @@
 use axum::{extract::Query, routing::get, Router, response::Response};
 use hyper::{Method, Server, header, http::HeaderValue};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize};
 use std::{env, net::SocketAddr};
 use tower_http::cors::{Any, CorsLayer};
 
@@ -11,8 +11,6 @@ extern crate derive_builder;
 
 mod lex;
 use lex::{transform, SPELLENGINE};
-
-
 
 #[derive(Debug, Deserialize)]
 struct Params {

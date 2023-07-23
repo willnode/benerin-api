@@ -31,7 +31,6 @@ pub struct Lexicon<'a> {
 #[derive(Serialize, Debug)]
 pub struct Lexeme<'a> {
     pub word: &'a str,
-    pub kind: &'a str,
     pub suffix: &'a str,
 }
 

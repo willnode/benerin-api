@@ -61,7 +61,6 @@ pub fn run_parser(text: &str) -> Vec<Lexicon> {
             let word = &text[i..i2];
             current_lexicon.lexemes.push(Lexeme {
                 word,
-                kind: EMPTY_STR,
                 suffix: EMPTY_STR,
             });
         }
