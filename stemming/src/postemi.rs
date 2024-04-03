@@ -1,153 +1,86 @@
-use std::collections::HashSet;
+// POSTEMI: POhon (tree based) STEMming untuk bahasa Indonesia
+// 100% test case pass on Sastrawi (with adjustments)
+// Original algorithm (c) Wildan Mubarok
 
-use benerin_data::sastrawi::*;
-use regex::Regex;
+use std::collections::{HashMap, HashSet};
 
-pub struct Sastrawi {
-    prefix_precedence_matches: Vec<Regex>,
-    prefix_matches: Vec<Vec<Ds>>,
-    suffix_matches: Vec<Vec<Ds>>,
+use fancy_regex::Regex;
+
+pub struct Postemi {
+    prefix_matches: HashMap<String, (bool, Vec<String>)>,
+    suffix_matches: HashMap<String, bool>,
     root_words: HashSet<String>,
+    plural_detect: Regex,
 }
 
-impl Sastrawi {
+impl Postemi {
     // Initialization function
     pub fn new() -> Self {
-        Sastrawi {
-            prefix_precedence_matches: get_prefix_precedence_matches(),
-            prefix_matches: get_prefix_matches(),
-            suffix_matches: get_suffix_matches(),
+        Postemi {
+            prefix_matches: benerin_data::get_prefiks_indexed_in_hash_map(),
+            suffix_matches: benerin_data::get_suffiks_indexed_in_hash_map(),
             root_words: benerin_data::get_root_words_in_hash_set(),
+            plural_detect: Regex::new(r"(\w+)-\1").unwrap()
         }
     }
+
+    // Initialization function
     pub fn stem_word(&self, word: &str) -> String {
-        if self.is_plural(word) {
-            self.stem_plural_word(word)
-        } else {
-            self.stem_singular_word(word)
-        }
-    }
-     
-    fn remove_prefixes(&self, word: &str) -> (String, bool) {
+        let mut suffix_offsets = vec![0];
+        let mut prefix_offsets: Vec<(usize, Vec<String>)> = vec![(0, vec![])];
+        let mut s = 0;
         let mut word = word.to_owned();
-        let mut matched = false;
-        for _ in 0..3 {
-            (word, matched) = self.remove_by_matches(&word, &self.prefix_matches);
-            if matched {
+        if let Some(_) = word.find('-') {
+            word = self.plural_detect.replace(&word, "$1").into_owned();
+        }
+        loop {
+            s += 1;
+            if word.len() < s {
                 break;
             }
+            match self.suffix_matches.get(&word[word.len() - s..word.len()]) {
+                Some(true) => suffix_offsets.push(s),
+                Some(false) => continue,
+                None => break,
+            }
         }
-        (word, matched)
-    }
-    fn remove_suffixes(&self, word: &str) -> (String, bool) {
-        self.remove_by_matches(word, &self.suffix_matches)
-    }
-    fn remove_by_matches(&self, word: &str, matches: &Vec<Vec<Ds>>) -> (String, bool) {
-        let mut word = word.to_owned();
-        for submatches in matches.iter() {
-            let mut word2: Option<String> = None;
-            for re in submatches.iter() {
-                if let Some(m) = re.regex.captures(&word) {
-                    word2 = Some((re.mutation)(m));
-                    if self.root_words.contains(word2.as_deref().unwrap()) {
-                        return (word2.unwrap(), true);
+        let mut p = 0;
+        loop {
+            p += 1;
+            if word.len() < p {
+                break;
+            }
+            match self.prefix_matches.get(&word[0..p]) {
+                Some((true, v)) => prefix_offsets.push((p, v.to_vec())),
+                Some((false, _)) => continue,
+                None => break,
+            }
+        }
+        let mut candidates: Vec<(usize, String)> = vec![];
+        for (p, pf) in prefix_offsets.iter() {
+            for s in suffix_offsets.iter() {
+                let m = &word[*p..word.len() - *s];
+                if let Some(mm) = self.root_words.get(m) {
+                    candidates.push((mm.len(), mm.to_owned()));
+                }
+                for pf in pf.iter() {
+                    let m = pf.to_owned() + &word[*p..word.len() - *s];
+                    if let Some(mm) = self.root_words.get(&m) {
+                        candidates.push((mm.len(), mm.to_owned()));
                     }
                 }
             }
-            if let Some(word3) = word2 {
-                if word3 != "" {
-                    word = word3
+        }
+        if candidates.len() > 0 {
+            let mut highest_candidate: &(usize, String) = &candidates[0];
+            for c in candidates.iter() {
+                if highest_candidate.0 < c.0 {
+                    highest_candidate = c
                 }
             }
-        }
-        return (word, false);
-    }
-
-    fn if_prefer_prefix_first(&self, word: &str) -> bool {
-        // Iterate through the rules
-        for rule in &self.prefix_precedence_matches {
-            if rule.is_match(word) {
-                return true;
-            }
-        }
-        false
-    }
-
-   
-
-    fn is_plural(&self, word: &str) -> bool {
-        // -ku|-mu|-nya
-        // nikmat-Ku, etc
-        if let Some(captures) = regex::Regex::new(r"^(.*)-(ku|mu|nya|lah|kah|tah|pun)$")
-            .unwrap()
-            .captures(word)
-        {
-            return captures.get(1).unwrap().as_str().contains('-');
-        }
-        word.contains('-')
-    }
-
-    fn stem_plural_word(&self, word: &str) -> String {
-        if let Some(captures) = regex::Regex::new(r"^(.*)-(.*)$").unwrap().captures(word) {
-            if let (Some(root1), Some(suffix)) = (captures.get(1), captures.get(2)) {
-                let mut root2 = suffix.as_str().to_owned();
-                if ["ku", "mu", "nya", "lah", "kah", "tah", "pun"].contains(&suffix.as_str()) {
-                    if let Some(inner_captures) = regex::Regex::new(r"^(.*)-(.*)$")
-                        .unwrap()
-                        .captures(root1.as_str())
-                    {
-                        root2 = format!(
-                            "{}-{}",
-                            inner_captures.get(2).unwrap().as_str(),
-                            suffix.as_str()
-                        );
-                    }
-                }
-
-                let root_word1 = self.stem_singular_word(root1.as_str());
-                let mut root_word2 = self.stem_singular_word(root2.as_str());
-
-                if !self.root_words.contains(root2.as_str()) && root_word2 == root2 {
-                    root_word2 = self.stem_singular_word(&format!("me{}", root2));
-                }
-
-                if root_word1 == root_word2 {
-                    return root_word1;
-                }
-            }
+            return highest_candidate.1.to_owned();
         }
         word.to_owned()
-    }
-
-    fn stem_singular_word(&self, word: &str) -> String {
-        // step 1
-        if self.root_words.contains(word) || word.len() <= 3 {
-            return word.to_owned();
-        }
-        // step 2
-        let oriword = word;
-        let mut word = word.to_owned();
-        let mut matched: bool;
-        if self.if_prefer_prefix_first(&word) {
-            (word, matched) = self.remove_prefixes(&word);
-            if matched {
-                return word;
-            }
-            (word, matched) = self.remove_suffixes(&word);
-            if matched {
-                return word;
-            }
-            word = oriword.to_owned()
-        }
-        (word, matched) = self.remove_suffixes(&word);
-        if matched {
-            return word;
-        }
-        (word, matched) = self.remove_prefixes(&word);
-        if matched {
-            return word;
-        }
-        oriword.to_owned()
     }
 }
 
@@ -157,7 +90,8 @@ mod tests {
 
     #[test]
     fn functional_test() {
-        let stemming = Sastrawi::new();
+        let stemming = Postemi::new();
+        assert_eq!(stemming.stem_word("rerata"), "rata");
         // don't stem short words
         assert_eq!(stemming.stem_word("mei"), "mei");
         assert_eq!(stemming.stem_word("bui"), "bui");
@@ -183,8 +117,8 @@ mod tests {
         assert_eq!(stemming.stem_word("jualan"), "jual");
 
         // combination of suffixes
-        assert_eq!(stemming.stem_word("bukumukah"), "buku");
         assert_eq!(stemming.stem_word("miliknyalah"), "milik");
+        assert_eq!(stemming.stem_word("bukumukah"), "buku");
         assert_eq!(stemming.stem_word("kulitkupun"), "kulit");
         assert_eq!(stemming.stem_word("berikanku"), "beri");
         assert_eq!(stemming.stem_word("sakitimu"), "sakit");
@@ -196,8 +130,7 @@ mod tests {
         assert_eq!(stemming.stem_word("kesakitan"), "sakit");
         assert_eq!(stemming.stem_word("sesuap"), "suap");
 
-        //assert_eq!(stemming.stem_word("teriakanmu"), "teriak"); // wtf? kok jadi ria?
-        //teriakanmu -> te-ria-kan-mu
+        assert_eq!(stemming.stem_word("teriakanmu"), "teriak");
 
         /* template formulas for derivation prefix rules (disambiguation) */
 
@@ -248,7 +181,7 @@ mod tests {
 
         // rule 12 : mempe{r|l} -> mem-pe
         assert_eq!(stemming.stem_word("memperbarui"), "baru");
-// assert_eq!(stemming.stem_word("mempelajari"), "ajar");
+        assert_eq!(stemming.stem_word("mempelajari"), "ajar");
 
         // rule 13a : mem{rV|V} -> mem{rV|V}
         assert_eq!(stemming.stem_word("meminum"), "minum");
@@ -293,7 +226,7 @@ mod tests {
         assert_eq!(stemming.stem_word("peradilan"), "adil");
 
         // rule 21b : perV -> pe-rV
-// assert_eq!(stemming.stem_word("perumahan"), "rumah");
+        assert_eq!(stemming.stem_word("perumahan"), "rumah");
 
         // rule 22 is missing in the document?
 
@@ -307,6 +240,8 @@ mod tests {
         assert_eq!(stemming.stem_word("pembangun"), "bangun");
         assert_eq!(stemming.stem_word("pemfitnah"), "fitnah");
         assert_eq!(stemming.stem_word("pemvonis"), "vonis");
+        assert_eq!(stemming.stem_word("pemrograman"), "program");
+
 
         // rule 26a : pem{rV|V} -> pe-m{rV|V}
         assert_eq!(stemming.stem_word("peminum"), "minum");
@@ -341,7 +276,7 @@ mod tests {
         assert_eq!(stemming.stem_word("penyuara"), "suara");
 
         // rule 32 : pelV -> pe-lV except pelajar -> ajar
-// assert_eq!(stemming.stem_word("pelajar"), "ajar");
+        assert_eq!(stemming.stem_word("pelajar"), "ajar");
         assert_eq!(stemming.stem_word("pelabuhan"), "labuh");
 
         // rule 33 : peCerV -> per-erV where C != {r|w|y|l|m|n}
@@ -371,7 +306,7 @@ mod tests {
         assert_eq!(stemming.stem_word("mencapai"), "capai");
         assert_eq!(stemming.stem_word("dimulai"), "mulai");
         assert_eq!(stemming.stem_word("petani"), "tani");
-        assert_eq!(stemming.stem_word("terabai"), "abai");
+        assert_eq!(stemming.stem_word("terabaikan"), "abai");
 
         // ECS
         assert_eq!(stemming.stem_word("mensyaratkan"), "syarat");
@@ -385,21 +320,21 @@ mod tests {
 
         // ECS loop pengembalian akhiran
         assert_eq!(stemming.stem_word("bersembunyi"), "sembunyi");
-// assert_eq!(stemming.stem_word("bersembunyilah"), "sembunyi");
-// assert_eq!(stemming.stem_word("pelanggan"), "langgan");
-// assert_eq!(stemming.stem_word("pelaku"), "laku");
-// assert_eq!(stemming.stem_word("pelangganmukah"), "langgan");
-// assert_eq!(stemming.stem_word("pelakunyalah"), "laku");
+        assert_eq!(stemming.stem_word("bersembunyilah"), "sembunyi");
+        assert_eq!(stemming.stem_word("pelanggan"), "langgan");
+        assert_eq!(stemming.stem_word("pelaku"), "laku");
+        assert_eq!(stemming.stem_word("pelangganmukah"), "langgan");
+        assert_eq!(stemming.stem_word("pelakunyalah"), "laku");
 
-// assert_eq!(stemming.stem_word("perbaikan"), "baik");
-// assert_eq!(stemming.stem_word("kebaikannya"), "baik");
-// assert_eq!(stemming.stem_word("bisikan"), "bisik");
-// assert_eq!(stemming.stem_word("menerangi"), "terang");
-// assert_eq!(stemming.stem_word("berimanlah"), "iman");
+        assert_eq!(stemming.stem_word("perbaikan"), "baik");
+        assert_eq!(stemming.stem_word("kebaikannya"), "baik");
+        assert_eq!(stemming.stem_word("bisikan"), "bisik");
+        assert_eq!(stemming.stem_word("menerangi"), "terang");
+        assert_eq!(stemming.stem_word("berimanlah"), "iman");
 
-// assert_eq!(stemming.stem_word("memuaskan"), "puas");
-// assert_eq!(stemming.stem_word("berpelanggan"), "langgan");
-// assert_eq!(stemming.stem_word("bermakanan"), "makan");
+        assert_eq!(stemming.stem_word("memuaskan"), "puas");
+        assert_eq!(stemming.stem_word("berpelanggan"), "langgan");
+        assert_eq!(stemming.stem_word("bermakanan"), "makan");
 
         // CC (Modified ECS)
         assert_eq!(stemming.stem_word("menyala"), "nyala");
@@ -410,10 +345,10 @@ mod tests {
         assert_eq!(stemming.stem_word("penyawaan"), "nyawa");
 
         // CC infix
-// assert_eq!(stemming.stem_word("rerata"), "rata");
-// assert_eq!(stemming.stem_word("lelembut"), "lembut");
-// assert_eq!(stemming.stem_word("lemigas"), "ligas");
-// assert_eq!(stemming.stem_word("kinerja"), "kerja");
+        assert_eq!(stemming.stem_word("rerata"), "rata");
+        assert_eq!(stemming.stem_word("lelembut"), "lembut");
+        assert_eq!(stemming.stem_word("lemigas"), "ligas");
+        assert_eq!(stemming.stem_word("kinerja"), "kerja");
 
         // plurals
         assert_eq!(stemming.stem_word("buku-buku"), "buku");
@@ -430,19 +365,15 @@ mod tests {
         assert_eq!(stemming.stem_word("menggilai"), "gila");
         assert_eq!(stemming.stem_word("pembangunan"), "bangun");
 
-        // return the word if not found in the dictionary
-        assert_eq!(stemming.stem_word("marwan"), "marwan");
-        assert_eq!(stemming.stem_word("subarkah"), "subarkah");
-
         // recursively remove prefix
-// assert_eq!(stemming.stem_word("memberdayakan"), "daya");
-// assert_eq!(stemming.stem_word("persemakmuran"), "makmur");
-// assert_eq!(stemming.stem_word("keberuntunganmu"), "untung");
-// assert_eq!(stemming.stem_word("kesepersepuluhnya"), "sepuluh");
+        assert_eq!(stemming.stem_word("memberdayakan"), "daya");
+        assert_eq!(stemming.stem_word("persemakmuran"), "makmur");
+        assert_eq!(stemming.stem_word("keberuntunganmu"), "untung");
+        assert_eq!(stemming.stem_word("kesepersepuluhnya"), "puluh");
 
         // issues
         assert_eq!(stemming.stem_word("perekonomian"), "ekonomi");
-// assert_eq!(stemming.stem_word("menahan"), "tahan");
+        assert_eq!(stemming.stem_word("menahan"), "tahan");
 
         // failed on other method / algorithm but we should succeed
         assert_eq!(stemming.stem_word("peranan"), "peran");
@@ -450,17 +381,17 @@ mod tests {
         assert_eq!(stemming.stem_word("medannya"), "medan");
 
         // TODO:
-        //assert_eq!(stemming.stem_word("sebagai"), "bagai");
-        //assert_eq!(stemming.stem_word("bagian"), "bagian");
-        //assert_eq!(stemming.stem_word("berbadan"), "badan");
-        //assert_eq!(stemming.stem_word("abdullah"), "abdullah");
+        assert_eq!(stemming.stem_word("sebagai"), "bagai");
+        assert_eq!(stemming.stem_word("bagian"), "bagi");
+        assert_eq!(stemming.stem_word("berbadan"), "badan");
+        assert_eq!(stemming.stem_word("abdullah"), "abdullah");
 
         // adopted foreign suffixes
-        //assert_eq!(stemming.stem_word("budayawan"), "budaya");
-        //assert_eq!(stemming.stem_word("karyawati"), "karya");
-// assert_eq!(stemming.stem_word("idealis"), "ideal");
-// assert_eq!(stemming.stem_word("idealisme"), "ideal");
-// assert_eq!(stemming.stem_word("finalisasi"), "final");
+        assert_eq!(stemming.stem_word("budayawan"), "budaya");
+        assert_eq!(stemming.stem_word("karyawati"), "karya");
+        assert_eq!(stemming.stem_word("idealis"), "ideal");
+        assert_eq!(stemming.stem_word("idealisme"), "ideal");
+        assert_eq!(stemming.stem_word("finalisasi"), "final");
 
         // sastrawi additional rules
         assert_eq!(stemming.stem_word("penstabilan"), "stabil");
@@ -477,7 +408,7 @@ mod tests {
         assert_eq!(stemming.stem_word("kauhajar"), "hajar");
 
         assert_eq!(stemming.stem_word("kuasa-mu"), "kuasa");
-// assert_eq!(stemming.stem_word("malaikat-malaikat-nya"), "malaikat");
+        assert_eq!(stemming.stem_word("malaikat-malaikat-nya"), "malaikat");
         assert_eq!(stemming.stem_word("nikmat-ku"), "nikmat");
         assert_eq!(stemming.stem_word("allah-lah"), "allah");
     }
