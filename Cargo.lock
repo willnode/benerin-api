@@ -112,18 +112,18 @@ dependencies = [
  "lazy_static",
  "serde",
  "serde_json",
- "strsim",
+ "strsim 0.10.0",
  "tokio",
  "tower",
  "tower-http",
 ]
 
 [[package]]
-name = "benerin-data"
+name = "benerin_data"
 version = "0.1.0"
 dependencies = [
+ "fancy-regex",
  "include-bytes-zstd",
- "regex",
 ]
 
 [[package]]
@@ -201,7 +201,7 @@ dependencies = [
  "ident_case",
  "proc-macro2",
  "quote",
- "strsim",
+ "strsim 0.10.0",
  "syn 1.0.109",
 ]
 
@@ -246,12 +246,6 @@ dependencies = [
  "derive_builder_core",
  "syn 1.0.109",
 ]
-
-[[package]]
-name = "distance"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d9d8664cf849d7d0f3114a3a387d2f5e4303176d746d5a951aaddc66dfe9240"
 
 [[package]]
 name = "equivalent"
@@ -609,18 +603,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "regex"
-version = "1.10.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c117dbdfde9c8308975b6a18d71f3f385c89461f7b3fb054288ecf2a2058ba4c"
-dependencies = [
- "aho-corasick",
- "memchr",
- "regex-automata",
- "regex-syntax",
-]
-
-[[package]]
 name = "regex-automata"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -722,6 +704,10 @@ dependencies = [
 [[package]]
 name = "spellcheck"
 version = "0.1.0"
+dependencies = [
+ "derive_builder",
+ "strsim 0.11.1",
+]
 
 [[package]]
 name = "static_assertions"
@@ -733,10 +719,8 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "stemming"
 version = "0.1.0"
 dependencies = [
- "benerin-data",
- "distance",
+ "benerin_data",
  "fancy-regex",
- "regex",
 ]
 
 [[package]]
@@ -744,6 +728,12 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "strsim"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "syn"
@@ -794,8 +784,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokenization"
+name = "tokenizer"
 version = "0.1.0"
+dependencies = [
+ "benerin_data",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "tokio"

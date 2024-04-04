@@ -4,7 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-benerin-data = { path = "../../benerin-data"}
-distance = "0.4.0"
+benerin_data = { path = "../../benerin-data"}
 fancy-regex = "0.13.0"
-regex = "1.10.4"

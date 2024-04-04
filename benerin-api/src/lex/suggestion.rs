@@ -1,4 +1,4 @@
-use serde::{Serialize};
+use serde::Serialize;
 use std::cmp::Ordering;
 
 #[derive(Serialize, Debug)]
@@ -105,4 +105,3 @@ fn str_is_empty<'a>(metadata: &'a str) -> bool {
         _ => false,
     }
 }
-
