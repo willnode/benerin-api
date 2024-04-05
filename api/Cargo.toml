@@ -1,15 +1,15 @@
 [package]
-name = "benerin-api"
+name = "api"
 version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-lazy_static = "1.4.0"
-derive_builder = "^0.10"
 serde_json = "1.0.103"
 serde = { version = "1.0.174", features = ["derive"] }
 tower = "0.4.13"
-strsim = "^0.10"
+tokenizer = { path = "../tokenizer" }
+stemmer = { path = "../stemmer" }
+spellcheck = { path = "../spellcheck" }
 
 [dependencies.axum]
 version = "0.6.19"
@@ -30,7 +30,3 @@ default-features = false
 version = "0.4.3"
 features = ["cors"]
 default-features = false
-
-[profile.release]
-strip = true 
-lto = true

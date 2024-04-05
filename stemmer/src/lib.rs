@@ -7,28 +7,28 @@ use tokenizer::Tokenizer;
 mod postemi;
 mod sastrawi;
 
-pub struct Stemming {
+pub struct Stemmer {
     tokenizer: Tokenizer,
     stop_words: HashSet<String>,
-    engine: StemmingEngine,
+    engine: StemmerEngine,
     pub use_stop_words: bool,
 }
 
-enum StemmingEngine {
+enum StemmerEngine {
     Sastrawi(Sastrawi),
     Postemi(Postemi),
 }
 
-impl Stemming {
+impl Stemmer {
     // Initialization function
     pub fn new(engine: &str) -> Self {
-        Stemming {
+        Stemmer {
             tokenizer: Tokenizer::new(),
             stop_words: benerin_data::get_stop_words_in_hash_set(),
             engine: if engine == "sastrawi" {
-                StemmingEngine::Sastrawi(Sastrawi::new())
+                StemmerEngine::Sastrawi(Sastrawi::new())
             } else {
-                StemmingEngine::Postemi(Postemi::new())
+                StemmerEngine::Postemi(Postemi::new())
             },
             use_stop_words: true,
         }
@@ -36,15 +36,15 @@ impl Stemming {
 
     pub fn stem_word(&self, word: &str) -> String {
         match &self.engine {
-            StemmingEngine::Postemi(x) => x.stem_word(word).unwrap_or(word).to_owned(),
-            StemmingEngine::Sastrawi(x) => x.stem_word(word),
+            StemmerEngine::Postemi(x) => x.stem_word(word).unwrap_or(word).to_owned(),
+            StemmerEngine::Sastrawi(x) => x.stem_word(word),
         }
     }
 
     pub fn stem_word_op(&self, word: &str) -> Option<&str> {
         match &self.engine {
-            StemmingEngine::Postemi(x) => x.stem_word(word),
-            StemmingEngine::Sastrawi(_) => None, // unimplemented
+            StemmerEngine::Postemi(x) => x.stem_word(word),
+            StemmerEngine::Sastrawi(_) => None, // unimplemented
         }
     }
 
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let stemming = Stemming::new("");
+        let stemming = Stemmer::new("");
         assert_eq!(stemming.stem("menari di sekolahan"), "tari sekolah");
         assert_eq!(stemming.stem("menyapu di selokan"), "sapu selokan");
         assert_eq!(stemming.stem("pemusnahan sampah"), "musnah sampah");

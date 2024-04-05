@@ -1,3 +1,7 @@
 [workspace]
 resolver = "2"
-members = [ "addressing", "benerin-api", "grammar", "graph", "spellcheck", "stemmer", "tokenizer", ]
+members = [ "addressing", "api", "grammar", "graph", "spellcheck", "stemmer", "tokenizer", ]
+
+[profile.release]
+strip = true 
+lto = true

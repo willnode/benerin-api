@@ -31,6 +31,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "api"
+version = "0.2.0"
+dependencies = [
+ "axum",
+ "hyper",
+ "serde",
+ "serde_json",
+ "spellcheck",
+ "stemmer",
+ "tokenizer",
+ "tokio",
+ "tower",
+ "tower-http",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -100,22 +116,6 @@ dependencies = [
  "miniz_oxide",
  "object",
  "rustc-demangle",
-]
-
-[[package]]
-name = "benerin-api"
-version = "0.2.0"
-dependencies = [
- "axum",
- "derive_builder",
- "hyper",
- "lazy_static",
- "serde",
- "serde_json",
- "strsim 0.10.0",
- "tokio",
- "tower",
- "tower-http",
 ]
 
 [[package]]
@@ -470,12 +470,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lazy_static"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
-
-[[package]]
 name = "libc"
 version = "0.2.153"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -775,7 +769,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "stemming"
+name = "stemmer"
 version = "0.1.0"
 dependencies = [
  "benerin_data",
