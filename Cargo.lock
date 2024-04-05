@@ -763,7 +763,9 @@ version = "0.1.0"
 dependencies = [
  "benerin_data",
  "derive_builder",
+ "graph",
  "strsim 0.11.1",
+ "tokenizer",
 ]
 
 [[package]]

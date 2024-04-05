@@ -5,10 +5,11 @@ use crate::Tokenizer;
 impl Tokenizer {
     pub fn parse<'a>(&'a self, text: String) -> Graph {
         let mut lexicons: Vec<Lexicon> = vec![];
+        let mut g = Graph::new(text, false);
         // loop through text
         let mut current_lexicon = Lexicon::new(0);
         // loop every character
-        let mut indices = text.char_indices().peekable();
+        let mut indices = g.text.char_indices().peekable();
         while let Some((i, c)) = indices.next() {
             // check if character is punctuation
             if self.punctuations.contains(&c) {
@@ -61,7 +62,6 @@ impl Tokenizer {
             lexicons.push(current_lexicon);
         }
 
-        let mut g = Graph::new(text);
         g.lexicons = lexicons;
         g
     }

@@ -55,7 +55,7 @@ impl Stemming {
     }
 
     pub fn stem_graph(&self, graph: &Graph) -> Graph {
-        let mut g = Graph::new("".to_owned());
+        let mut g = Graph::new("".to_owned(), graph.using_keys);
         for lexicon in &graph.lexicons {
             let mut p = Lexicon::new(g.text.len());
             for lexeme in lexicon.lexemes.iter() {
@@ -74,20 +74,9 @@ impl Stemming {
                 if self.use_stop_words && self.stop_words.contains(s) {
                     return;
                 }
-                let mut w = Lexeme::new(g.text.len());
-                g.text.push_str(s);
-                if g.using_keys {
-                    if ow == s {
-                        w.set_key(lexeme.metadata.key)
-                    } else {
-                        w.init_key()
-                    }
-                }
-                w.set_length(g.text.len());
-                g.text.push_str(" ");
-                w.set_suffix(g.text.len());
-                p.lexemes.push(w);
-                p.set_length(g.text.len());
+                let mut w = g.push_word(s, graph.get_key(lexeme));
+                w.set_suffix(g.push_str(" "));
+                p.push_lexeme(w);
             }
             None => {}
         };

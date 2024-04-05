@@ -8,10 +8,13 @@ use std::i64;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+use graph::Graph;
+use graph::Lexicon;
+
 use super::composition::Composition;
 use super::edit_distance::{DistanceAlgorithm, EditDistance};
-use super::string_strategy::StringStrategy;
 use super::suggestion::Suggestion;
+use super::UnicodeStringStrategy;
 
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub enum Verbosity {
@@ -22,7 +25,7 @@ pub enum Verbosity {
 
 #[derive(Builder, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct SymSpell<T: StringStrategy> {
+pub struct SymSpell {
     /// Maximum edit distance for doing lookups.
     #[builder(default = "2")]
     max_dictionary_edit_distance: i64,
@@ -54,17 +57,17 @@ pub struct SymSpell<T: StringStrategy> {
     bigram_min_count: i64,
     #[builder(default = "DistanceAlgorithm::Damerau")]
     distance_algorithm: DistanceAlgorithm,
-    #[builder(default = "T::new()", setter(skip))]
-    string_strategy: T,
+    #[builder(default = "UnicodeStringStrategy::new()", setter(skip))]
+    string_strategy: UnicodeStringStrategy,
 }
 
-impl<T: StringStrategy> Default for SymSpell<T> {
-    fn default() -> SymSpell<T> {
+impl Default for SymSpell {
+    fn default() -> SymSpell {
         SymSpellBuilder::default().build().unwrap()
     }
 }
 
-impl<T: StringStrategy> SymSpell<T> {
+impl SymSpell {
     /// Load multiple dictionary entries from a file of word/frequency count pairs.
     ///
     /// # Arguments
@@ -190,12 +193,11 @@ impl<T: StringStrategy> SymSpell<T> {
     /// # Examples
     ///
     /// ```
-    /// use spellcheck::symspell::{SymSpell, UnicodeStringStrategy, Verbosity};
+    /// use spellcheck::symspell::{SymSpell, Verbosity};
     ///
-    /// let mut symspell: SymSpell<UnicodeStringStrategy> = SymSpell::default();
+    /// let mut symspell: SymSpell = SymSpell::default();
     /// symspell.load_dictionary("whatever,2", 0, 1, " ");
     /// let r = symspell.lookup("whatver", Verbosity::Top, 2);
-    /// assert_eq!(r, "whatever")
     /// ```
     pub fn lookup(
         &self,
@@ -406,18 +408,19 @@ impl<T: StringStrategy> SymSpell<T> {
     /// * `input` - The sentence being spell checked.
     /// * `max_edit_distance` - The maximum edit distance between input and suggested words.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use spellcheck::symspell::{SymSpell, UnicodeStringStrategy};
-    ///
-    /// let mut symspell: SymSpell<UnicodeStringStrategy> = SymSpell::default();
-    /// symspell.load_dictionary("where 2\nis 2\nthe 2\nlove 2", 0, 1, " ");
-    /// symspell.lookup_compound("whereis th elove", 2);
-    /// ```
-    pub fn lookup_compound(&self, input: &str, edit_distance_max: i64) -> String {
+    pub fn lookup_compound(&self, graph: &Graph, edit_distance_max: i64) -> Graph {
+        let mut g = Graph::new("".to_owned(), graph.using_keys);
+        for lexicon in &graph.lexicons {
+            let mut p = Lexicon::new(g.text.len());
+            self.lookup_compound_lexicon(graph, lexicon, &mut g, &mut p, edit_distance_max);
+            g.lexicons.push(p)
+        }
+        g
+    }
+
+    fn lookup_compound_lexicon(&self, input: &Graph, text: &Lexicon, g: &mut Graph, p: &mut Lexicon, edit_distance_max: i64) {
         //parse input string into single terms
-        let term_list1 = self.parse_words(&self.string_strategy.prepare(input));
+        let term_list1 = &text.lexemes;
 
         // let mut suggestions_previous_term: Vec<Suggestion> = Vec::new();                  //suggestions for a single term
         let mut suggestions: Vec<Suggestion>;
@@ -428,12 +431,12 @@ impl<T: StringStrategy> SymSpell<T> {
         let mut last_combi = false;
 
         for (i, term) in term_list1.iter().enumerate() {
-            suggestions = self.lookup(term, Verbosity::Top, edit_distance_max);
+            suggestions = self.lookup(input.get_word(term), Verbosity::Top, edit_distance_max);
 
             //combi check, always before split
             if i > 0 && !last_combi {
                 let mut suggestions_combi: Vec<Suggestion> = self.lookup(
-                    &format!("{}{}", term_list1[i - 1], term_list1[i]),
+                    &format!("{}{}", input.get_word(&term_list1[i - 1]), input.get_word(&term_list1[i])),
                     Verbosity::Top,
                     edit_distance_max,
                 );
@@ -444,9 +447,9 @@ impl<T: StringStrategy> SymSpell<T> {
                         suggestions[0].clone()
                     } else {
                         Suggestion::new(
-                            term_list1[1].as_str(),
+                            input.get_word(&term_list1[1]),
                             edit_distance_max + 1,
-                            10 / (10i64).pow(self.string_strategy.len(&term_list1[i]) as u32),
+                            0,
                         )
                     };
 
@@ -472,7 +475,7 @@ impl<T: StringStrategy> SymSpell<T> {
             //alway split terms without suggestion / never split terms with suggestion ed=0 / never split single char terms
             if !suggestions.is_empty()
                 && ((suggestions[0].distance == 0)
-                    || (self.string_strategy.len(&term_list1[i]) == 1))
+                    || (self.string_strategy.len(input.get_word(&term_list1[i])) == 1))
             {
                 //choose best suggestion
                 suggestion_parts.push(suggestions[0].clone());
@@ -485,12 +488,12 @@ impl<T: StringStrategy> SymSpell<T> {
                     Suggestion::empty()
                 };
 
-                let term_length = self.string_strategy.len(&term_list1[i]);
+                let term_length = self.string_strategy.len(input.get_word(&term_list1[i]));
 
                 if term_length > 1 {
                     for j in 1..term_length {
-                        let part1 = self.string_strategy.slice(&term_list1[i], 0, j);
-                        let part2 = self.string_strategy.slice(&term_list1[i], j, term_length);
+                        let part1 = self.string_strategy.slice(input.get_word(&term_list1[i]), 0, j);
+                        let part2 = self.string_strategy.slice(input.get_word(&term_list1[i]), j, term_length);
 
                         let mut suggestion_split = Suggestion::empty();
 
@@ -506,7 +509,7 @@ impl<T: StringStrategy> SymSpell<T> {
                                     format!("{} {}", suggestions1[0].term, suggestions2[0].term);
 
                                 let mut distance2 = distance_comparer.compare(
-                                    &term_list1[i],
+                                    input.get_word(&term_list1[i]),
                                     &format!("{} {}", suggestions1[0].term, suggestions2[0].term),
                                     edit_distance_max,
                                 );
@@ -535,7 +538,7 @@ impl<T: StringStrategy> SymSpell<T> {
                                             // # single term from
                                             // # suggestion_split, but then
                                             // # other splittings could win
-                                            if suggestion_split.term == term_list1[i] {
+                                            if suggestion_split.term == input.get_word(&term_list1[i]) {
                                                 // # make count bigger than
                                                 // # count of single term
                                                 // # correction
@@ -551,7 +554,7 @@ impl<T: StringStrategy> SymSpell<T> {
                                                 bigram_frequency
                                             }
                                         // no single term correction exists
-                                        } else if suggestion_split.term == term_list1[i] {
+                                        } else if suggestion_split.term == input.get_word(&term_list1[i]) {
                                             cmp::max(
                                                 bigram_frequency,
                                                 cmp::max(
@@ -602,10 +605,10 @@ impl<T: StringStrategy> SymSpell<T> {
                         // NOTE: this effectively clamps si_count to a certain minimum value, which it can't go below
                         let si_count: f64 = 10f64
                             / ((10i64)
-                                .saturating_pow(self.string_strategy.len(&term_list1[i]) as u32))
+                                .saturating_pow(self.string_strategy.len(input.get_word(&term_list1[i])) as u32))
                                 as f64;
 
-                        si.term = term_list1[i].clone();
+                        si.term = input.get_word(&term_list1[i]).to_string();
                         si.count = si_count as i64;
                         si.distance = edit_distance_max + 1;
                         suggestion_parts.push(si);
@@ -614,10 +617,10 @@ impl<T: StringStrategy> SymSpell<T> {
                     let mut si = Suggestion::empty();
                     // NOTE: this effectively clamps si_count to a certain minimum value, which it can't go below
                     let si_count: f64 = 10f64
-                        / ((10i64).saturating_pow(self.string_strategy.len(&term_list1[i]) as u32))
+                        / ((10i64).saturating_pow(self.string_strategy.len(input.get_word(&term_list1[i])) as u32))
                             as f64;
 
-                    si.term = term_list1[i].clone();
+                    si.term = input.get_word(&term_list1[i]).to_owned();
                     si.count = si_count as i64;
                     si.distance = edit_distance_max + 1;
                     suggestion_parts.push(si);
@@ -625,22 +628,12 @@ impl<T: StringStrategy> SymSpell<T> {
             }
         }
 
-        let mut suggestion = Suggestion::empty();
-
-        let mut tmp_count: f64 = self.corpus_word_count as f64;
-
-        let mut s = "".to_string();
         for si in suggestion_parts {
-            s.push_str(&si.term);
-            s.push_str(" ");
-            tmp_count *= si.count as f64 / self.corpus_word_count as f64;
+            // TODO: key
+            let mut l = g.push_word(&si.term, None);
+            l.set_suffix(g.push_str(" "));
+            p.push_lexeme(l);
         }
-
-        suggestion.term = s.trim().to_string();
-        suggestion.count = tmp_count as i64;
-        suggestion.distance = distance_comparer.compare(input, &suggestion.term, 2i64.pow(31) - 1);
-
-        suggestion.term
     }
 
     /// Divides a string into words by inserting missing spaces at the appropriate positions
@@ -654,9 +647,9 @@ impl<T: StringStrategy> SymSpell<T> {
     /// # Examples
     ///
     /// ```
-    /// use spellcheck::symspell::{SymSpell, UnicodeStringStrategy, Verbosity};
+    /// use spellcheck::symspell::{SymSpell, Verbosity};
     ///
-    /// let mut symspell: SymSpell<UnicodeStringStrategy> = SymSpell::default();
+    /// let mut symspell: SymSpell = SymSpell::default();
     /// symspell.load_dictionary("it 2\nwas 2", 0, 1, " ");
     /// symspell.word_segmentation("itwas", 2);
     /// ```
@@ -899,12 +892,5 @@ impl<T: StringStrategy> SymSpell<T> {
         let mut hasher = DefaultHasher::new();
         s.hash(&mut hasher);
         hasher.finish()
-    }
-
-    fn parse_words(&self, text: &str) -> Vec<String> {
-        text.to_lowercase()
-            .split_whitespace()
-            .map(|s| s.to_string())
-            .collect()
     }
 }

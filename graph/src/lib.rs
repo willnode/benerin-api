@@ -4,12 +4,44 @@ use trim_in_place::TrimInPlace;
 pub use types::{Graph, Lexeme, LexemeMetadata, Lexicon, PosTagging};
 
 impl Graph {
-    pub fn new(text: String) -> Graph {
+    pub fn new(text: String, using_keys: bool) -> Graph {
         Graph {
             lexicons: vec![],
             text,
-            using_keys: false,
+            using_keys,
         }
+    }
+
+    pub fn push_word(&mut self, word: &str, existing_key: Option<(&str, usize)>) -> Lexeme {
+        let mut l = Lexeme::new(self.text.len());
+        self.text.push_str(word);
+        l.set_length(self.text.len());
+        if self.using_keys {
+            match existing_key {
+                Some((s, k)) => {
+                    if s == word {
+                        l.set_key(k)
+                    } else {
+                        l.init_key()
+                    }
+                }
+                None => l.init_key(),
+            }
+        }
+        l
+    }
+
+    pub fn get_key(&self, lex: &Lexeme) -> Option<(&str, usize)> {
+        if self.using_keys {
+            Some((self.get_word(lex), lex.metadata.key))
+        } else {
+            None
+        }
+    }
+
+    pub fn push_str(&mut self, text: &str) -> usize {
+        self.text.push_str(text);
+        self.text.len()
     }
 
     pub fn get_word(&self, lex: &Lexeme) -> &str {
@@ -102,6 +134,10 @@ impl Lexicon {
     }
     pub fn set_prefix(&mut self, pos: usize) {
         self.prefix = pos - self.offset
+    }
+    pub fn push_lexeme(&mut self, lexeme: Lexeme) {
+        self.set_length(lexeme.offset + lexeme.length + lexeme.suffix);
+        self.lexemes.push(lexeme);
     }
 }
 

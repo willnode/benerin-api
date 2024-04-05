@@ -6,4 +6,6 @@ edition = "2021"
 [dependencies]
 derive_builder = "^0.10"
 strsim = "0.11.1"
+tokenizer = { path = "../tokenizer" }
+graph = { path = "../graph" }
 benerin_data = { path = "../../benerin-data"}

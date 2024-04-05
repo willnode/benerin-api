@@ -1,16 +1,7 @@
 
 
-pub trait StringStrategy: Clone + Default {
-    fn new() -> Self;
-    fn prepare(&self, s: &str) -> String;
-    fn len(&self, s: &str) -> usize;
-    fn remove(&self, s: &str, index: usize) -> String;
-    fn slice(&self, s: &str, start: usize, end: usize) -> String;
-    fn suffix(&self, s: &str, start: usize) -> String;
-    fn at(&self, s: &str, i: isize) -> Option<char>;
-}
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct UnicodeStringStrategy {}
 
 impl Default for UnicodeStringStrategy {
@@ -19,20 +10,20 @@ impl Default for UnicodeStringStrategy {
     }
 }
 
-impl StringStrategy for UnicodeStringStrategy {
-    fn new() -> Self {
+impl UnicodeStringStrategy {
+    pub fn new() -> Self {
         Self {}
     }
 
-    fn prepare(&self, s: &str) -> String {
+    pub fn prepare(&self, s: &str) -> String {
         s.to_string()
     }
 
-    fn len(&self, s: &str) -> usize {
+    pub fn len(&self, s: &str) -> usize {
         s.chars().count()
     }
 
-    fn remove(&self, s: &str, index: usize) -> String {
+    pub fn remove(&self, s: &str, index: usize) -> String {
         s.chars()
             .enumerate()
             .filter(|(ii, _)| ii != &index)
@@ -40,15 +31,15 @@ impl StringStrategy for UnicodeStringStrategy {
             .collect()
     }
 
-    fn slice(&self, s: &str, start: usize, end: usize) -> String {
+    pub fn slice(&self, s: &str, start: usize, end: usize) -> String {
         s.chars().skip(start).take(end - start).collect()
     }
 
-    fn suffix(&self, s: &str, start: usize) -> String {
+    pub fn suffix(&self, s: &str, start: usize) -> String {
         s.chars().skip(start).collect::<String>()
     }
 
-    fn at(&self, s: &str, i: isize) -> Option<char> {
+    pub fn at(&self, s: &str, i: isize) -> Option<char> {
         if i < 0 || i >= s.len() as isize {
             return None;
         }
