@@ -323,6 +323,13 @@ name = "grammar"
 version = "0.1.0"
 
 [[package]]
+name = "graph"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -705,6 +712,7 @@ dependencies = [
 name = "spellcheck"
 version = "0.1.0"
 dependencies = [
+ "benerin_data",
  "derive_builder",
  "strsim 0.11.1",
 ]
@@ -788,6 +796,7 @@ name = "tokenizer"
 version = "0.1.0"
 dependencies = [
  "benerin_data",
+ "graph",
  "serde",
  "serde_json",
 ]

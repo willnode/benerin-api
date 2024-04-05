@@ -1,9 +1,10 @@
 use benerin_data::EMPTY_STR;
+use graph::{Graph, Lexeme, Lexicon};
 
-use crate::{types::{Lexeme, Lexicon}, Tokenizer};
+use crate::Tokenizer;
 
 impl Tokenizer {
-    pub fn parse<'a>(&'a self, text: &'a str) -> Vec<Lexicon> {
+    pub fn parse<'a>(&'a self, text: &'a str) -> Graph {
         let mut lexicons: Vec<Lexicon> = vec![];
         // loop through text
         let mut current_lexicon = Lexicon {
@@ -58,7 +59,10 @@ impl Tokenizer {
                 }
                 // push lexeme
                 let word = &text[i..i2];
-                current_lexicon.lexemes.push(Lexeme { word, suffix: EMPTY_STR });
+                current_lexicon.lexemes.push(Lexeme {
+                    word,
+                    suffix: EMPTY_STR,
+                });
             }
         }
 
@@ -66,6 +70,9 @@ impl Tokenizer {
             lexicons.push(current_lexicon);
         }
 
-        lexicons
+        Graph {
+            input: &text,
+            lexicons,
+        }
     }
 }

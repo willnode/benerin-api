@@ -21,17 +21,21 @@ Dataset yang dipakai berada diluar repo ini, lihat willnode/benerin-data.
 ## Depedency Tree
 
 ```
-benerin-cli + benerin-daemon
+daemon
+|-- api
+cmd
+|-- api
+api
 |-+ stemming
-| |-  benerin-data
+| |-  graph
+| |-  data
 |-+ spellcheck
-| |-  benerin-data
+| |-  graph
+| |-  data
 |-+ grammar
-| |-  benerin-data
+| |-  graph
+| |-  data
 |-+ addressing
-| |-  spellcheck
-| |-  stemming
-|-+ tokenization
-| |-  stemming
-| |-  grammar
+|-+ tokenizer
+| |-  graph
 ```

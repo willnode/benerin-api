@@ -1,6 +1,13 @@
 
-use benerin_data::EMPTY_STR;
 use serde::{Deserialize, Serialize};
+
+
+#[derive(Serialize, Debug)]
+pub struct Graph<'a> {
+    #[serde(skip_serializing_if = "str_is_empty")]
+    pub input: &'a str,
+    pub lexicons: Vec<Lexicon<'a>>,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lexicon<'a> {
@@ -20,6 +27,5 @@ pub struct Lexeme<'a> {
 
 
 fn str_is_empty<'a>(metadata: &'a str) -> bool {
-    metadata == EMPTY_STR
+    metadata == ""
 }
-

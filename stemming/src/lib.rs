@@ -53,6 +53,13 @@ impl Stemming {
             StemmingEngine::Sastrawi(x) => x.stem_word(word)
         }
     }
+    
+    pub fn stem_word_op(&self, word: &str) -> Option<&str> {
+        match &self.engine {
+            StemmingEngine::Postemi(x) => x.stem_word(word),
+            StemmingEngine::Sastrawi(_) => None, // unimplemented
+        }
+    }
 
     pub fn stem(&self, text: &str) -> String {
         let mut text = text.to_owned();

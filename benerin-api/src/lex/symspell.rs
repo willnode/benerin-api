@@ -114,7 +114,6 @@ impl<T: StringStrategy> SymSpell<T> {
     ) -> bool {
         let line_parts: Vec<&str> = line.split(separator).collect();
         if line_parts.len() >= 2 {
-            // let key = unidecode(line_parts[term_index as usize]);
             let key = self
                 .string_strategy
                 .prepare(line_parts[term_index as usize]);

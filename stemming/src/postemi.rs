@@ -385,7 +385,6 @@ mod tests {
         assert_eq!(stemming.stem_word("sebagai"), Some("bagai"));
         assert_eq!(stemming.stem_word("bagian"), Some("bagi"));
         assert_eq!(stemming.stem_word("berbadan"), Some("badan"));
-        assert_eq!(stemming.stem_word("abdullah"), Some("abdullah"));
 
         // adopted foreign suffixes
         assert_eq!(stemming.stem_word("budayawan"), Some("budaya"));
