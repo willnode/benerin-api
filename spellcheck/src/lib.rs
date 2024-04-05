@@ -28,7 +28,7 @@ impl SpellCheck {
         self.symspell.lookup(input, self.verbosity, self.max_edit_distance)
     }
 
-    pub fn lookup(&self, input: &str) -> Vec<Suggestion> {
+    pub fn lookup(&self, input: &str) -> String {
         self.symspell.lookup_compound(input, self.max_edit_distance)
     }
 }
@@ -38,5 +38,5 @@ impl SpellCheck {
 fn it_works() {
     let spellcheck = SpellCheck::new();
     assert_eq!(spellcheck.lookup_word("kvcing"), vec![Suggestion::new("kucing", 1, 21)]);
-    assert_eq!(spellcheck.lookup("kvcing lir"), vec![Suggestion::new("kucing air", 2, 0)]);
+    assert_eq!(spellcheck.lookup("kvcing lir"), "kucing air");
 }

@@ -1,30 +1,21 @@
-use benerin_data::EMPTY_STR;
 use graph::{Graph, Lexeme, Lexicon};
 
 use crate::Tokenizer;
 
 impl Tokenizer {
-    pub fn parse<'a>(&'a self, text: &'a str) -> Graph {
+    pub fn parse<'a>(&'a self, text: String) -> Graph {
         let mut lexicons: Vec<Lexicon> = vec![];
         // loop through text
-        let mut current_lexicon = Lexicon {
-            lexemes: vec![],
-            prefix: EMPTY_STR,
-            suffix: EMPTY_STR,
-        };
+        let mut current_lexicon = Lexicon::new(0);
         // loop every character
         let mut indices = text.char_indices().peekable();
         while let Some((i, c)) = indices.next() {
             // check if character is punctuation
             if self.punctuations.contains(&c) {
                 // end of lexicon
-                current_lexicon.suffix = &text[i..i + 1];
+                current_lexicon.set_suffix(i + 1);
                 lexicons.push(current_lexicon);
-                current_lexicon = Lexicon {
-                    lexemes: vec![],
-                    prefix: EMPTY_STR,
-                    suffix: EMPTY_STR,
-                };
+                current_lexicon = Lexicon::new(i + 1);
             }
             // check if character is whitespace
             else if c.is_whitespace() {
@@ -40,11 +31,12 @@ impl Tokenizer {
                 }
                 // start of lexicon?
                 if current_lexicon.lexemes.len() == 0 {
-                    current_lexicon.prefix = &text[i..i2];
+                    current_lexicon.set_prefix(i2);
                 }
                 // put it to last lexeme
                 else {
-                    current_lexicon.lexemes.last_mut().unwrap().suffix = &text[i..i2];
+                    current_lexicon.lexemes.last_mut().unwrap().set_suffix(i2);
+                    current_lexicon.set_length(i2);
                 }
             } else {
                 // get until next character is whitespace or punctuation
@@ -58,21 +50,19 @@ impl Tokenizer {
                     }
                 }
                 // push lexeme
-                let word = &text[i..i2];
-                current_lexicon.lexemes.push(Lexeme {
-                    word,
-                    suffix: EMPTY_STR,
-                });
+                let mut lexeme = Lexeme::new(i);
+                lexeme.set_length(i2);
+                current_lexicon.set_length(i2);
+                current_lexicon.lexemes.push(lexeme);
             }
         }
 
-        if current_lexicon.lexemes.len() > 0 || current_lexicon.prefix != EMPTY_STR {
+        if current_lexicon.lexemes.len() > 0 || current_lexicon.prefix > 0 {
             lexicons.push(current_lexicon);
         }
 
-        Graph {
-            input: &text,
-            lexicons,
-        }
+        let mut g = Graph::new(text);
+        g.lexicons = lexicons;
+        g
     }
 }

@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
-use benerin_data::EMPTY_STR;
-use graph::{Graph, Lexicon};
+use graph::Graph;
 use serde_json::Error;
 
 mod parser;
@@ -21,16 +20,13 @@ impl Tokenizer {
 
     pub fn from_json<'a>(&'a self, data: &'a str) -> Result<Graph, Error> {
         match serde_json::from_str(data) {
-            Ok(lexicons) => Ok(Graph {
-                input: &EMPTY_STR,
-                lexicons,
-            }),
+            Ok(graph) => Ok(graph),
             Err(e) => Err(e),
         }
     }
 
     pub fn to_json(&self, graph: &Graph) -> Result<String, Error> {
-        serde_json::to_string(&graph)
+        serde_json::to_string(&graph.lexicons)
     }
 }
 
@@ -42,10 +38,14 @@ mod tests {
     fn it_works() {
         let tokenizer = Tokenizer::new();
         let s = " Halo, apa kabar?. Rumah  baik ya! ";
-        assert_eq!(s, tokenizer.render(&tokenizer.parse(s)));
+        assert_eq!(s, tokenizer.render(&tokenizer.parse(s.to_owned())));
         let sj = "Halo apa kabar Rumah baik ya";
-        assert_eq!(sj, tokenizer.render_flat(&tokenizer.parse(s)));
-        let sj = r#"[{"lexemes":[{"word":"Halo"}],"prefix":" ","suffix":","},{"lexemes":[{"word":"apa","suffix":" "},{"word":"kabar"}],"prefix":" ","suffix":"?"},{"lexemes":[],"suffix":"."},{"lexemes":[{"word":"Rumah","suffix":"  "},{"word":"baik","suffix":" "},{"word":"ya"}],"prefix":" ","suffix":"!"},{"lexemes":[],"prefix":" "}]"#;
-        assert_eq!(sj, tokenizer.to_json(&tokenizer.parse(s)).unwrap());
+        assert_eq!(sj, tokenizer.render_flat(&tokenizer.parse(s.to_owned())));
+        let sj = r#"[{"lexemes":[{"offset":1,"length":4,"suffix":0}],"offset":0,"prefix":1,"length":4,"suffix":1},{"lexemes":[{"offset":7,"length":3,"suffix":1},{"offset":11,"length":5,"suffix":0}],"offset":6,"prefix":1,"length":9,"suffix":1},{"lexemes":[],"offset":17,"prefix":0,"length":0,"suffix":1},{"lexemes":[{"offset":19,"length":5,"suffix":2},{"offset":26,"length":4,"suffix":1},{"offset":31,"length":2,"suffix":0}],"offset":18,"prefix":1,"length":14,"suffix":1},{"lexemes":[],"offset":34,"prefix":1,"length":0,"suffix":0}]"#;
+        assert_eq!(sj, tokenizer.to_json(&tokenizer.parse(s.to_owned())).unwrap());
+        let sj = r#"[]"#;
+        assert_eq!(sj, tokenizer.to_json(&tokenizer.parse("".to_owned())).unwrap());
+        let sj = r#"[{"lexemes":[],"offset":0,"prefix":1,"length":0,"suffix":0}]"#;
+        assert_eq!(sj, tokenizer.to_json(&tokenizer.parse(" ".to_owned())).unwrap());
     }
 }

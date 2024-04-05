@@ -73,8 +73,6 @@ impl Sastrawi {
         false
     }
 
-   
-
     fn is_plural(&self, word: &str) -> bool {
         // -ku|-mu|-nya
         // nikmat-Ku, etc

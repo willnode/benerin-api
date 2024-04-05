@@ -38,11 +38,7 @@ impl Ord for Suggestion {
 
 impl PartialOrd for Suggestion {
     fn partial_cmp(&self, other: &Suggestion) -> Option<Ordering> {
-        let distance_cmp = self.distance.cmp(&other.distance);
-        if distance_cmp == Ordering::Equal {
-            return Some(self.count.cmp(&other.count));
-        }
-        Some(distance_cmp)
+        Some(self.cmp(other))
     }
 }
 

@@ -5,4 +5,6 @@ edition = "2021"
 
 [dependencies]
 benerin_data = { path = "../../benerin-data"}
+graph = { path = "../graph" }
+tokenizer = { path = "../tokenizer" }
 fancy-regex = "0.13.0"

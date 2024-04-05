@@ -194,7 +194,8 @@ impl<T: StringStrategy> SymSpell<T> {
     ///
     /// let mut symspell: SymSpell<UnicodeStringStrategy> = SymSpell::default();
     /// symspell.load_dictionary("whatever,2", 0, 1, " ");
-    /// symspell.lookup("whatver", Verbosity::Top, 2);
+    /// let r = symspell.lookup("whatver", Verbosity::Top, 2);
+    /// assert_eq!(r, "whatever")
     /// ```
     pub fn lookup(
         &self,
@@ -414,7 +415,7 @@ impl<T: StringStrategy> SymSpell<T> {
     /// symspell.load_dictionary("where 2\nis 2\nthe 2\nlove 2", 0, 1, " ");
     /// symspell.lookup_compound("whereis th elove", 2);
     /// ```
-    pub fn lookup_compound(&self, input: &str, edit_distance_max: i64) -> Vec<Suggestion> {
+    pub fn lookup_compound(&self, input: &str, edit_distance_max: i64) -> String {
         //parse input string into single terms
         let term_list1 = self.parse_words(&self.string_strategy.prepare(input));
 
@@ -639,7 +640,7 @@ impl<T: StringStrategy> SymSpell<T> {
         suggestion.count = tmp_count as i64;
         suggestion.distance = distance_comparer.compare(input, &suggestion.term, 2i64.pow(31) - 1);
 
-        vec![suggestion]
+        suggestion.term
     }
 
     /// Divides a string into words by inserting missing spaces at the appropriate positions

@@ -26,16 +26,19 @@ daemon
 cmd
 |-- api
 api
-|-+ stemming
-| |-  graph
-| |-  data
-|-+ spellcheck
-| |-  graph
-| |-  data
-|-+ grammar
-| |-  graph
-| |-  data
-|-+ addressing
-|-+ tokenizer
-| |-  graph
+|-- stemmer
+|-- spellcheck
+|-- grammar
+|-- tokenizer
+tokenizer
+|-- graph
+stemmer
+|-- tokenizer
+|-- data
+spellcheck
+|-- tokenizer
+|-- data
+grammar
+|-- tokenizer
+|-- data
 ```
