@@ -1,4 +1,5 @@
-use axum::{extract::Query, response::Response, routing::get, Router};
+use axum::{response::{IntoResponse, Response}, routing::{get, post}, Router};
+use axum::Json;
 use hyper::{header, http::HeaderValue, Method, Server};
 use serde::Deserialize;
 use spellcheck::SpellCheck;
@@ -16,14 +17,13 @@ struct Params {
 }
 
 
-async fn kbbi(Query(params): Query<Params>) -> Response<String> {
-    let tokenizer = Tokenizer::new();
-    let stemmer = Stemmer::new("");
-    let spellchecker = SpellCheck::new();
+async fn kbbi(Json(payload): Json<Params>) -> impl IntoResponse {
+    // Here you can handle the POST request, for example:
+    let (tokenizer, stemmer, spellchecker) = init_features();
 
-    let mut body = tokenizer.parse(params.text);
+    let mut body = tokenizer.parse(payload.text);
     let mut need_tokenized_output = false;
-    for task in params.tasks.split(",") {
+    for task in payload.tasks.split(",") {
         match task {
             "spellcheck" => body = spellchecker.lookup_graph(&body),
             "stemming" => body = stemmer.stem_graph(&body),
@@ -50,6 +50,13 @@ async fn kbbi(Query(params): Query<Params>) -> Response<String> {
     }
 }
 
+fn init_features() -> (Tokenizer, Stemmer, SpellCheck) {
+    let tokenizer = Tokenizer::new();
+    let stemmer = Stemmer::new("");
+    let spellchecker = SpellCheck::new();
+    (tokenizer, stemmer, spellchecker)
+}
+
 async fn health() -> &'static str {
     "ok"
 }
@@ -57,12 +64,12 @@ async fn health() -> &'static str {
 #[tokio::main]
 async fn main() {
     let cors = CorsLayer::new()
-        .allow_methods([Method::GET])
+        .allow_methods([Method::GET, Method::POST])
         .allow_origin(Any);
     // build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
-        .route("/", get(kbbi).layer(cors))
+        .route("/", post(kbbi).layer(cors))
         .route("/health", get(health));
     let addr_str = env::var("LISTEN").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
     let addr: SocketAddr = addr_str.parse().unwrap();

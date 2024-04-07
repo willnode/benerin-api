@@ -13,7 +13,7 @@ spellcheck = { path = "../spellcheck" }
 
 [dependencies.axum]
 version = "0.6.19"
-features = ["query", "http1"]
+features = ["query", "json", "http1"]
 default-features = false
 
 [dependencies.hyper]
