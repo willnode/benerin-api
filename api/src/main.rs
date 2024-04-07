@@ -1,6 +1,6 @@
 use axum::{response::{IntoResponse, Response}, routing::{get, post}, Router};
 use axum::Json;
-use hyper::{header, http::HeaderValue, Method, Server};
+use hyper::{header::{self, ACCEPT, CONTENT_TYPE}, http::HeaderValue, Method, Server};
 use serde::Deserialize;
 use spellcheck::SpellCheck;
 use stemmer::Stemmer;
@@ -65,6 +65,7 @@ async fn health() -> &'static str {
 async fn main() {
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
+        .allow_headers([ACCEPT, CONTENT_TYPE])
         .allow_origin(Any);
     // build our application with a route
     let app = Router::new()
