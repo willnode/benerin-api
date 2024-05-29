@@ -1,0 +1,178 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Benerin API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/": {
+      "post": {
+        "summary": "Process text",
+        "description": "Processes text with specified tasks such as stemming or spellcheck. Use tokenize to respond with JSON.",
+        "operationId": "processText",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "example": "Halo dunia",
+                    "description": "Input text"
+                  },
+                  "lexicons": {
+                    "description": "Optional data (given from previous response) for detecting diffs",
+                    "type": "array",
+                    "example": null,
+                    "items": {
+                      "$ref": "#/components/schemas/Lexicon"
+                    }
+                  },
+                  "tasks": {
+                    "type": "array",
+                    "description": "A list of tasks",
+                    "example": [
+                      "stemming",
+                      "spellcheck",
+                      "tokenize"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "init_keys",
+                        "stemming",
+                        "spellcheck",
+                        "tokenize"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "text",
+                  "tasks"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "example": "dunia"
+                    },
+                    "lexicons": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Lexicon"
+                      }
+                    },
+                    "using_keys": {
+                      "type": "boolean",
+                      "example": false
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "lexicons",
+                    "using_keys"
+                  ]
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "tags": [
+          "Text Processing"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Lexicon": {
+        "type": "object",
+        "properties": {
+          "lexemes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "offset": {
+                  "type": "integer",
+                  "example": 0
+                },
+                "length": {
+                  "type": "integer",
+                  "example": 5
+                },
+                "suffix": {
+                  "type": "integer",
+                  "example": 0
+                }
+              },
+              "required": [
+                "offset",
+                "length",
+                "suffix"
+              ]
+            }
+          },
+          "offset": {
+            "type": "integer",
+            "example": 0
+          },
+          "prefix": {
+            "type": "integer",
+            "example": 0
+          },
+          "length": {
+            "type": "integer",
+            "example": 5
+          },
+          "suffix": {
+            "type": "integer",
+            "example": 0
+          }
+        },
+        "required": [
+          "lexemes",
+          "offset",
+          "prefix",
+          "length",
+          "suffix"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.benerin.web.id",
+      "description": "Public Benerin API Server"
+    }
+  ]
+}

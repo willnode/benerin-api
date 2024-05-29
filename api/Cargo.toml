@@ -10,7 +10,9 @@ tower = "0.4.13"
 tokenizer = { path = "../tokenizer" }
 stemmer = { path = "../stemmer" }
 spellcheck = { path = "../spellcheck" }
+graph = { path = "../graph" }
 once_cell = "1.19.0"
+axum-swagger-ui = "0.3.0"
 
 [dependencies.axum]
 version = "0.6.19"

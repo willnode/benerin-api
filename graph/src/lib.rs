@@ -82,7 +82,9 @@ impl Graph {
         let mut rng = rand::thread_rng();
         for lex in self.lexicons.iter_mut() {
             for le in lex.lexemes.iter_mut() {
-                le.metadata.key = rng.gen();
+                if le.metadata.key == 0 {
+                    le.metadata.key = rng.gen();
+                }
             }
         }
         self.using_keys = true

@@ -1,20 +1,36 @@
-use axum::{response::{IntoResponse, Response}, routing::{get, post}, Router};
 use axum::Json;
-use hyper::{header::{self, ACCEPT, CONTENT_TYPE}, http::HeaderValue, Method, Server};
+use axum::{
+    response::{IntoResponse, Redirect, Response},
+    routing::{get, post},
+    Router,
+};
+use axum_swagger_ui::swagger_ui;
+use graph::{Graph, Lexicon};
+use hyper::{
+    header::{self, ACCEPT, CONTENT_TYPE},
+    http::HeaderValue,
+    Method, Server,
+};
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use spellcheck::SpellCheck;
+use std::{
+    env,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 use stemmer::Stemmer;
 use tokenizer::Tokenizer;
-use std::{env, net::SocketAddr, sync::{Arc, Mutex}};
 use tower_http::cors::{Any, CorsLayer};
-use once_cell::sync::Lazy;
 
 #[derive(Debug, Deserialize)]
 struct Params {
     #[serde(default)]
     text: String,
     #[serde(default)]
-    tasks: String,
+    tasks: Vec<String>,
+    #[serde(default)]
+    lexicons: Option<Vec<Lexicon>>,
 }
 
 static FEATURES: Lazy<Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>>> = Lazy::new(|| init_features());
@@ -24,31 +40,35 @@ async fn kbbi(Json(payload): Json<Params>) -> impl IntoResponse {
     let mutex = &*FEATURES.lock().unwrap();
     let (tokenizer, stemmer, spellchecker) = mutex;
 
-    let mut body = tokenizer.parse(payload.text);
+    let mut body = match payload.lexicons {
+        None => tokenizer.parse(payload.text),
+        Some(t) => Graph {
+            text: payload.text,
+            lexicons: t,
+            using_keys: true,
+        },
+    };
     let mut need_tokenized_output = false;
-    for task in payload.tasks.split(",") {
-        match task {
+    for task in payload.tasks {
+        match task.as_str() {
             "spellcheck" => body = spellchecker.lookup_graph(&body),
             "stemming" => body = stemmer.stem_graph(&body),
             "tokenize" => need_tokenized_output = true,
+            "init_keys" => body.init_hash_keys(),
             _ => {}
         }
     }
     if need_tokenized_output {
         let body_str = serde_json::to_string(&body).unwrap();
         let mut res = Response::new(body_str);
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
+        let mime = HeaderValue::from_static("application/json");
+        res.headers_mut().insert(header::CONTENT_TYPE, mime);
         res
     } else {
         let body_str = tokenizer.render(&body);
         let mut res = Response::new(body_str);
-        res.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("text/plain"),
-        );
+        let mime = HeaderValue::from_static("text/plain");
+        res.headers_mut().insert(header::CONTENT_TYPE, mime);
         res
     }
 }
@@ -70,9 +90,29 @@ async fn main() {
         .allow_methods([Method::GET, Method::POST])
         .allow_headers([ACCEPT, CONTENT_TYPE])
         .allow_origin(Any);
-    // build our application with a route
+
     let app = Router::new()
-        // `GET /` goes to `root`
+        .route(
+            "/swagger",
+            get(|| async {
+                let body = swagger_ui("swagger/openapi.json");
+                let mut resp = Response::new(body);
+                let mime = HeaderValue::from_static("text/html");
+                resp.headers_mut().insert(header::CONTENT_TYPE, mime);
+                resp
+            }),
+        )
+        .route(
+            "/swagger/openapi.json",
+            get(|| async {
+                let body = include_str!("openapi.json").to_owned();
+                let mut resp = Response::new(body);
+                let mime = HeaderValue::from_static("application/json");
+                resp.headers_mut().insert(header::CONTENT_TYPE, mime);
+                resp
+            }),
+        )
+        .route("/", get(Redirect::to("/swagger")))
         .route("/", post(kbbi).layer(cors))
         .route("/health", get(health));
     let addr_str = env::var("LISTEN").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
