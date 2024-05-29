@@ -14,6 +14,7 @@ use hyper::{
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use spellcheck::SpellCheck;
+use std::time::Instant;
 use std::{
     env,
     net::SocketAddr,
@@ -74,10 +75,15 @@ async fn kbbi(Json(payload): Json<Params>) -> impl IntoResponse {
 }
 
 fn init_features() -> Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>> {
+    let start = Instant::now();
     let tokenizer = Tokenizer::new();
-    let stemmer = Stemmer::new("");
-    let spellchecker = SpellCheck::new();
-    Arc::new(Mutex::new((tokenizer, stemmer, spellchecker)))
+    let stemmer = Stemmer::new();
+    let spellcheck = SpellCheck::new();
+    let duration = start.elapsed();
+
+    println!("Initialization took: {:.2?} seconds", duration);
+
+    Arc::new(Mutex::new((tokenizer, stemmer, spellcheck)))
 }
 
 async fn health() -> &'static str {

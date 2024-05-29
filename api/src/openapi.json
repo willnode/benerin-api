@@ -173,6 +173,10 @@
     {
       "url": "https://api.benerin.web.id",
       "description": "Public Benerin API Server"
+    },
+    {
+      "url": "http://localhost:3000",
+      "description": "Dev"
     }
   ]
 }

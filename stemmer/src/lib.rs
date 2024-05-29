@@ -14,14 +14,9 @@ pub struct Stemmer {
     pub use_stop_words: bool,
 }
 
-enum StemmerEngine {
-    // Sastrawi(Sastrawi),
-    Postemi(Postemi),
-}
-
 impl Stemmer {
     // Initialization function
-    pub fn new(engine: &str) -> Self {
+    pub fn new() -> Self {
         Stemmer {
             tokenizer: Tokenizer::new(),
             stop_words: benerin_data::get_stop_words_in_hash_set(),
@@ -79,7 +74,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let stemming = Stemmer::new("");
+        let stemming = Stemmer::new();
         assert_eq!(stemming.stem("menari di sekolahan"), "tari sekolah");
         assert_eq!(stemming.stem("menyapu di selokan"), "sapu selokan");
         assert_eq!(stemming.stem("pemusnahan sampah"), "musnah sampah");
