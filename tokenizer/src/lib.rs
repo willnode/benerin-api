@@ -1,11 +1,12 @@
 use std::collections::HashSet;
 
+use deepsize::DeepSizeOf;
 use graph::Graph;
 use serde_json::Error;
 
 mod parser;
 mod renderer;
-
+#[derive(DeepSizeOf)]
 pub struct Tokenizer {
     punctuations: HashSet<char>,
 }

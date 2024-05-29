@@ -4,8 +4,8 @@ use std::cmp::Ordering;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Suggestion {
     pub term: String,
-    pub distance: i64,
-    pub count: i64,
+    pub distance: i32,
+    pub count: i32,
 }
 
 impl Suggestion {
@@ -17,7 +17,7 @@ impl Suggestion {
         }
     }
 
-    pub fn new(term: impl Into<String>, distance: i64, count: i64) -> Suggestion {
+    pub fn new(term: impl Into<String>, distance: i32, count: i32) -> Suggestion {
         Suggestion {
             term: term.into(),
             distance,

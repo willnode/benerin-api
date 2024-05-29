@@ -9,3 +9,5 @@ strsim = "0.11.1"
 tokenizer = { path = "../tokenizer" }
 graph = { path = "../graph" }
 benerin_data = { path = "../../benerin-data"}
+deepsize = "0.2.0"
+xxhash-rust = { version = "0.8.10", features = [ "xxh64" ] }

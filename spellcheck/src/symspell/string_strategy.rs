@@ -1,7 +1,7 @@
+use deepsize::DeepSizeOf;
 
 
-
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, DeepSizeOf)]
 pub struct UnicodeStringStrategy {}
 
 impl Default for UnicodeStringStrategy {

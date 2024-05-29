@@ -36,6 +36,7 @@ version = "0.2.0"
 dependencies = [
  "axum",
  "axum-swagger-ui",
+ "deepsize",
  "graph",
  "hyper",
  "once_cell",
@@ -223,6 +224,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29b5acf0dea37a7f66f7b25d2c5e93fd46f8f6968b1a5d7a3e02e97768afc95a"
 dependencies = [
  "darling_core",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "deepsize"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cdb987ec36f6bf7bfbea3f928b75590b736fc42af8e54d97592481351b2b96c"
+dependencies = [
+ "deepsize_derive",
+]
+
+[[package]]
+name = "deepsize_derive"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "990101d41f3bc8c1a45641024377ee284ecc338e5ecf3ea0f0e236d897c72796"
+dependencies = [
+ "proc-macro2",
  "quote",
  "syn 1.0.109",
 ]
@@ -777,10 +798,12 @@ name = "spellcheck"
 version = "0.1.0"
 dependencies = [
  "benerin_data",
+ "deepsize",
  "derive_builder",
  "graph",
  "strsim 0.11.1",
  "tokenizer",
+ "xxhash-rust",
 ]
 
 [[package]]
@@ -864,6 +887,7 @@ name = "tokenizer"
 version = "0.1.0"
 dependencies = [
  "benerin_data",
+ "deepsize",
  "graph",
  "serde",
  "serde_json",
@@ -1161,6 +1185,12 @@ checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "xxhash-rust"
+version = "0.8.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "927da81e25be1e1a2901d59b81b37dd2efd1fc9c9345a55007f09bf5a2d3ee03"
 
 [[package]]
 name = "zstd"

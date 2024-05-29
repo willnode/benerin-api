@@ -5,6 +5,7 @@ use axum::{
     Router,
 };
 use axum_swagger_ui::swagger_ui;
+use deepsize::DeepSizeOf;
 use graph::{Graph, Lexicon};
 use hyper::{
     header::{self, ACCEPT, CONTENT_TYPE},
@@ -82,6 +83,8 @@ fn init_features() -> Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>> {
     let duration = start.elapsed();
 
     println!("Initialization took: {:.2?} seconds", duration);
+    println!("Spellcheck heap: {:.2?} MB", spellcheck.deep_size_of() / 1024 / 1024);
+    spellcheck.debug_heap();
 
     Arc::new(Mutex::new((tokenizer, stemmer, spellcheck)))
 }
@@ -92,6 +95,9 @@ async fn health() -> &'static str {
 
 #[tokio::main]
 async fn main() {
+    {
+        let _ = &*FEATURES.lock().unwrap();
+    }
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
         .allow_headers([ACCEPT, CONTENT_TYPE])

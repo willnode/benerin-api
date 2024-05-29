@@ -4,37 +4,39 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
-use std::i64;
+use std::i32;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-
+use xxhash_rust::xxh64;
+use deepsize::DeepSizeOf;
 use graph::Graph;
 use graph::Lexicon;
 
 use super::composition::Composition;
 use super::edit_distance::{DistanceAlgorithm, EditDistance};
+use super::suggestion;
 use super::suggestion::Suggestion;
 use super::UnicodeStringStrategy;
 
-#[derive(Eq, PartialEq, Debug, Clone, Copy)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy, DeepSizeOf)]
 pub enum Verbosity {
     Top,
     Closest,
     All,
 }
 
-#[derive(Builder, PartialEq)]
+#[derive(Builder, PartialEq, DeepSizeOf)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SymSpell {
     /// Maximum edit distance for doing lookups.
     #[builder(default = "2")]
-    max_dictionary_edit_distance: i64,
+    max_dictionary_edit_distance: i32,
     /// The length of word prefixes used for spell checking.
     #[builder(default = "7")]
-    prefix_length: i64,
+    prefix_length: i32,
     /// The minimum frequency count for dictionary words to be considered correct spellings.
-    #[builder(default = "1")]
-    count_threshold: i64,
+    #[builder(default = "10")]
+    count_threshold: i32,
 
     //// number of all words in the corpus used to generate the
     //// frequency dictionary. This is used to calculate the word
@@ -43,18 +45,22 @@ pub struct SymSpell {
     //// dictionary is complete, but not if the dictionary is
     //// truncated or filtered
     #[builder(default = "1_024_908_267_229", setter(skip))]
-    corpus_word_count: i64,
+    corpus_word_count: i32,
 
     #[builder(default = "0", setter(skip))]
-    max_length: i64,
+    max_length: i32,
     #[builder(default = "HashMap::new()", setter(skip))]
-    deletes: HashMap<u64, Vec<Box<str>>>,
+    deletes: HashMap<u64, Vec<usize>>,
     #[builder(default = "HashMap::new()", setter(skip))]
-    words: HashMap<Box<str>, i64>,
+    idword: HashMap<usize, Box<str>>,
     #[builder(default = "HashMap::new()", setter(skip))]
-    bigrams: HashMap<Box<str>, i64>,
-    #[builder(default = "i64::MAX", setter(skip))]
-    bigram_min_count: i64,
+    wordid: HashMap<Box<str>, usize>,
+    #[builder(default = "HashMap::new()", setter(skip))]
+    wordfreq: HashMap<Box<str>, i32>,
+    #[builder(default = "HashMap::new()", setter(skip))]
+    bigrams: HashMap<Box<str>, i32>,
+    #[builder(default = "i32::MAX", setter(skip))]
+    bigram_min_count: i32,
     #[builder(default = "DistanceAlgorithm::Damerau")]
     distance_algorithm: DistanceAlgorithm,
     #[builder(default = "UnicodeStringStrategy::new()", setter(skip))]
@@ -79,8 +85,8 @@ impl SymSpell {
     pub fn load_dictionary(
         &mut self,
         corpus: &str,
-        term_index: i64,
-        count_index: i64,
+        term_index: i32,
+        count_index: i32,
         separator: &str,
     ) {
         for line in corpus.lines() {
@@ -99,8 +105,8 @@ impl SymSpell {
     pub fn load_dictionary_line(
         &mut self,
         line: &str,
-        term_index: i64,
-        count_index: i64,
+        term_index: i32,
+        count_index: i32,
         separator: &str,
     ) {
         let line_parts: Vec<&str> = line.split(separator).collect();
@@ -108,10 +114,25 @@ impl SymSpell {
             let key = self
                 .string_strategy
                 .prepare(line_parts[term_index as usize]);
-            let count = line_parts[count_index as usize].parse::<i64>().unwrap();
+            let count = line_parts[count_index as usize].parse::<i32>().unwrap();
 
             self.create_dictionary_entry(key, count);
         }
+    }
+
+    pub fn debug_heap(&self) {
+        println!(
+            "  bigrams heap: {:.2?} MB",
+            self.bigrams.deep_size_of() / 1024 / 1024
+        );
+        println!(
+            "  words heap: {:.2?} MB",
+            self.wordfreq.deep_size_of() / 1024 / 1024
+        );
+        println!(
+            "  deletes heap: {:.2?} MB",
+            self.deletes.deep_size_of() / 1024 / 1024
+        );
     }
 
     /// Load multiple bigram entries from a file of bigram/frequency count pairs.
@@ -125,8 +146,8 @@ impl SymSpell {
     pub fn load_bigram_dictionary(
         &mut self,
         corpus: &str,
-        term_index: i64,
-        count_index: i64,
+        term_index: i32,
+        count_index: i32,
         separator: &str,
     ) -> bool {
         if !Path::new(corpus).exists() {
@@ -155,8 +176,8 @@ impl SymSpell {
     pub fn load_bigram_dictionary_line(
         &mut self,
         line: &str,
-        term_index: i64,
-        count_index: i64,
+        term_index: i32,
+        count_index: i32,
         separator: &str,
     ) -> bool {
         let line_parts: Vec<&str> = line.split(separator).collect();
@@ -172,7 +193,7 @@ impl SymSpell {
                 self.string_strategy
                     .prepare(line_parts[term_index as usize])
             };
-            let count = line_parts[count_index as usize].parse::<i64>().unwrap();
+            let count = line_parts[count_index as usize].parse::<i32>().unwrap();
             self.bigrams.insert(key.into_boxed_str(), count);
             if count < self.bigram_min_count {
                 self.bigram_min_count = count;
@@ -203,7 +224,7 @@ impl SymSpell {
         &self,
         input: &str,
         verbosity: Verbosity,
-        max_edit_distance: i64,
+        max_edit_distance: i32,
     ) -> Vec<Suggestion> {
         if max_edit_distance > self.max_dictionary_edit_distance {
             panic!("max_edit_distance is bigger than max_dictionary_edit_distance");
@@ -213,7 +234,7 @@ impl SymSpell {
 
         let prep_input = self.string_strategy.prepare(input);
         let input = prep_input.as_str();
-        let input_len = self.string_strategy.len(input) as i64;
+        let input_len = self.string_strategy.len(input) as i32;
 
         if input_len - self.max_dictionary_edit_distance > self.max_length {
             return suggestions;
@@ -222,8 +243,8 @@ impl SymSpell {
         let mut hashset1: HashSet<String> = HashSet::new();
         let mut hashset2: HashSet<String> = HashSet::new();
 
-        if self.words.contains_key(input) {
-            let suggestion_count = self.words[input];
+        if self.wordfreq.contains_key(input) {
+            let suggestion_count = self.wordfreq[input];
             suggestions.push(Suggestion::new(input, 0, suggestion_count));
 
             if verbosity != Verbosity::All {
@@ -254,7 +275,7 @@ impl SymSpell {
         while candidate_pointer < candidates.len() {
             let candidate = &candidates.get(candidate_pointer).unwrap().clone();
             candidate_pointer += 1;
-            let candidate_len = self.string_strategy.len(candidate) as i64;
+            let candidate_len = self.string_strategy.len(candidate) as i32;
             let length_diff = input_prefix_len - candidate_len;
 
             if length_diff > max_edit_distance2 {
@@ -267,16 +288,17 @@ impl SymSpell {
             if self.deletes.contains_key(&self.get_string_hash(&candidate)) {
                 let dict_suggestions = &self.deletes[&self.get_string_hash(&candidate)];
 
-                for suggestion in dict_suggestions {
-                    let suggestion_len = self.string_strategy.len(suggestion) as i64;
+                for suggestion_id in dict_suggestions {
+                    let suggestion = self.idword[suggestion_id].as_ref();
+                    let suggestion_len = self.string_strategy.len(suggestion) as i32;
 
-                    if suggestion.as_ref() == input {
+                    if suggestion == input {
                         continue;
                     }
 
                     if (suggestion_len - input_len).abs() > max_edit_distance2
                         || suggestion_len < candidate_len
-                        || (suggestion_len == candidate_len && suggestion.as_ref() != candidate)
+                        || (suggestion_len == candidate_len && suggestion != candidate)
                     {
                         continue;
                     }
@@ -294,7 +316,7 @@ impl SymSpell {
                     if candidate_len == 0 {
                         distance = cmp::max(input_len, suggestion_len);
 
-                        if distance > max_edit_distance2 || hashset2.contains(suggestion.as_ref()) {
+                        if distance > max_edit_distance2 || hashset2.contains(suggestion) {
                             continue;
                         }
                         hashset2.insert(suggestion.to_string());
@@ -306,7 +328,7 @@ impl SymSpell {
                             input_len - 1
                         };
 
-                        if distance > max_edit_distance2 || hashset2.contains(suggestion.as_ref()) {
+                        if distance > max_edit_distance2 || hashset2.contains(suggestion) {
                             continue;
                         }
 
@@ -332,7 +354,7 @@ impl SymSpell {
                             continue;
                         }
 
-                        if hashset2.contains(suggestion.as_ref()) {
+                        if hashset2.contains(suggestion) {
                             continue;
                         }
                         hashset2.insert(suggestion.to_string());
@@ -345,8 +367,8 @@ impl SymSpell {
                     }
 
                     if distance <= max_edit_distance2 {
-                        let suggestion_count = self.words[suggestion];
-                        let si = Suggestion::new(suggestion.as_ref(), distance, suggestion_count);
+                        let suggestion_count = self.wordfreq[suggestion];
+                        let si = Suggestion::new(suggestion, distance, suggestion_count);
 
                         if !suggestions.is_empty() {
                             match verbosity {
@@ -408,7 +430,7 @@ impl SymSpell {
     /// * `input` - The sentence being spell checked.
     /// * `max_edit_distance` - The maximum edit distance between input and suggested words.
     ///
-    pub fn lookup_compound(&self, graph: &Graph, edit_distance_max: i64) -> Graph {
+    pub fn lookup_compound(&self, graph: &Graph, edit_distance_max: i32) -> Graph {
         let mut g = Graph::new("".to_owned(), graph.using_keys);
         for lexicon in &graph.lexicons {
             let mut p = Lexicon::new(g.text.len());
@@ -418,7 +440,14 @@ impl SymSpell {
         g
     }
 
-    fn lookup_compound_lexicon(&self, input: &Graph, text: &Lexicon, g: &mut Graph, p: &mut Lexicon, edit_distance_max: i64) {
+    fn lookup_compound_lexicon(
+        &self,
+        input: &Graph,
+        text: &Lexicon,
+        g: &mut Graph,
+        p: &mut Lexicon,
+        edit_distance_max: i32,
+    ) {
         //parse input string into single terms
         let term_list1 = &text.lexemes;
 
@@ -436,7 +465,11 @@ impl SymSpell {
             //combi check, always before split
             if i > 0 && !last_combi {
                 let mut suggestions_combi: Vec<Suggestion> = self.lookup(
-                    &format!("{}{}", input.get_word(&term_list1[i - 1]), input.get_word(&term_list1[i])),
+                    &format!(
+                        "{}{}",
+                        input.get_word(&term_list1[i - 1]),
+                        input.get_word(&term_list1[i])
+                    ),
                     Verbosity::Top,
                     edit_distance_max,
                 );
@@ -446,11 +479,7 @@ impl SymSpell {
                     let best2 = if !suggestions.is_empty() {
                         suggestions[0].clone()
                     } else {
-                        Suggestion::new(
-                            input.get_word(&term_list1[1]),
-                            edit_distance_max + 1,
-                            0,
-                        )
+                        Suggestion::new(input.get_word(&term_list1[1]), edit_distance_max + 1, 0)
                     };
 
                     //if (suggestions_combi[0].distance + 1 < DamerauLevenshteinDistance(term_list1[i - 1] + " " + term_list1[i], best1.term + " " + best2.term))
@@ -492,8 +521,14 @@ impl SymSpell {
 
                 if term_length > 1 {
                     for j in 1..term_length {
-                        let part1 = self.string_strategy.slice(input.get_word(&term_list1[i]), 0, j);
-                        let part2 = self.string_strategy.slice(input.get_word(&term_list1[i]), j, term_length);
+                        let part1 =
+                            self.string_strategy
+                                .slice(input.get_word(&term_list1[i]), 0, j);
+                        let part2 = self.string_strategy.slice(
+                            input.get_word(&term_list1[i]),
+                            j,
+                            term_length,
+                        );
 
                         let mut suggestion_split = Suggestion::empty();
 
@@ -526,7 +561,7 @@ impl SymSpell {
                                         suggestion_split_best = Suggestion::empty();
                                     }
                                 }
-                                let count2: i64 = match self.bigrams.get(&*suggestion_split.term) {
+                                let count2: i32 = match self.bigrams.get(&*suggestion_split.term) {
                                     Some(&bigram_frequency) => {
                                         // increase count, if split
                                         // corrections are part of or
@@ -538,7 +573,9 @@ impl SymSpell {
                                             // # single term from
                                             // # suggestion_split, but then
                                             // # other splittings could win
-                                            if suggestion_split.term == input.get_word(&term_list1[i]) {
+                                            if suggestion_split.term
+                                                == input.get_word(&term_list1[i])
+                                            {
                                                 // # make count bigger than
                                                 // # count of single term
                                                 // # correction
@@ -554,7 +591,9 @@ impl SymSpell {
                                                 bigram_frequency
                                             }
                                         // no single term correction exists
-                                        } else if suggestion_split.term == input.get_word(&term_list1[i]) {
+                                        } else if suggestion_split.term
+                                            == input.get_word(&term_list1[i])
+                                        {
                                             cmp::max(
                                                 bigram_frequency,
                                                 cmp::max(
@@ -580,7 +619,7 @@ impl SymSpell {
                                             ((suggestions1[0].count as f64)
                                                 / (self.corpus_word_count as f64)
                                                 * (suggestions2[0].count as f64))
-                                                as i64,
+                                                as i32,
                                         )
                                     }
                                 };
@@ -604,12 +643,12 @@ impl SymSpell {
                         let mut si = Suggestion::empty();
                         // NOTE: this effectively clamps si_count to a certain minimum value, which it can't go below
                         let si_count: f64 = 10f64
-                            / ((10i64)
-                                .saturating_pow(self.string_strategy.len(input.get_word(&term_list1[i])) as u32))
-                                as f64;
+                            / ((10i32).saturating_pow(
+                                self.string_strategy.len(input.get_word(&term_list1[i])) as u32,
+                            )) as f64;
 
                         si.term = input.get_word(&term_list1[i]).to_string();
-                        si.count = si_count as i64;
+                        si.count = si_count as i32;
                         si.distance = edit_distance_max + 1;
                         suggestion_parts.push(si);
                     }
@@ -617,11 +656,12 @@ impl SymSpell {
                     let mut si = Suggestion::empty();
                     // NOTE: this effectively clamps si_count to a certain minimum value, which it can't go below
                     let si_count: f64 = 10f64
-                        / ((10i64).saturating_pow(self.string_strategy.len(input.get_word(&term_list1[i])) as u32))
-                            as f64;
+                        / ((10i32).saturating_pow(
+                            self.string_strategy.len(input.get_word(&term_list1[i])) as u32,
+                        )) as f64;
 
                     si.term = input.get_word(&term_list1[i]).to_owned();
-                    si.count = si_count as i64;
+                    si.count = si_count as i32;
                     si.distance = edit_distance_max + 1;
                     suggestion_parts.push(si);
                 }
@@ -653,7 +693,7 @@ impl SymSpell {
     /// symspell.load_dictionary("it 2\nwas 2", 0, 1, " ");
     /// symspell.word_segmentation("itwas", 2);
     /// ```
-    pub fn word_segmentation(&self, input: &str, max_edit_distance: i64) -> Composition {
+    pub fn word_segmentation(&self, input: &str, max_edit_distance: i32) -> Composition {
         let input = self.string_strategy.prepare(input);
         let asize = self.string_strategy.len(&input);
 
@@ -668,7 +708,7 @@ impl SymSpell {
                 let mut part = self.string_strategy.slice(&input, j, j + i);
 
                 let mut sep_len = 0;
-                let mut top_ed: i64 = 0;
+                let mut top_ed: i32 = 0;
 
                 let first_char = self.string_strategy.at(&part, 0).unwrap();
                 if first_char.is_whitespace() {
@@ -677,11 +717,11 @@ impl SymSpell {
                     sep_len = 1;
                 }
 
-                top_ed += part.len() as i64;
+                top_ed += part.len() as i32;
 
                 part = part.replace(" ", "");
 
-                top_ed -= part.len() as i64;
+                top_ed -= part.len() as i32;
 
                 let results = self.lookup(&part, Verbosity::Top, max_edit_distance);
 
@@ -689,7 +729,7 @@ impl SymSpell {
                     top_prob_log =
                         (results[0].count as f64 / self.corpus_word_count as f64).log10();
                 } else {
-                    top_ed += part.len() as i64;
+                    top_ed += part.len() as i32;
                     top_prob_log = (10.0
                         / (self.corpus_word_count as f64 * 10.0f64.powf(part.len() as f64)))
                     .log10();
@@ -703,7 +743,7 @@ impl SymSpell {
                         distance_sum: top_ed,
                         prob_log_sum: top_prob_log,
                     };
-                } else if i as i64 == self.max_length
+                } else if i as i32 == self.max_length
                     || (((compositions[ci].distance_sum + top_ed == compositions[di].distance_sum)
                         || (compositions[ci].distance_sum + sep_len + top_ed
                             == compositions[di].distance_sum))
@@ -730,9 +770,9 @@ impl SymSpell {
     fn delete_in_suggestion_prefix(
         &self,
         delete: &str,
-        delete_len: i64,
+        delete_len: i32,
         suggestion: &str,
-        suggestion_len: i64,
+        suggestion_len: i32,
     ) -> bool {
         if delete_len == 0 {
             return true;
@@ -758,7 +798,7 @@ impl SymSpell {
         true
     }
 
-    fn create_dictionary_entry<K>(&mut self, key: K, count: i64) -> bool
+    fn create_dictionary_entry<K>(&mut self, key: K, count: i32) -> bool
     where
         K: Clone + AsRef<str> + Into<String>,
     {
@@ -768,36 +808,40 @@ impl SymSpell {
 
         let key_clone = key.clone().into().into_boxed_str();
 
-        match self.words.get(key.as_ref()) {
+        match self.wordfreq.get(key.as_ref()) {
             Some(i) => {
-                let updated_count = if i64::MAX - i > count {
+                let updated_count = if i32::MAX - i > count {
                     i + count
                 } else {
-                    i64::MAX
+                    i32::MAX
                 };
-                self.words.insert(key_clone, updated_count);
+                self.wordfreq.insert(key_clone, updated_count);
                 return false;
             }
             None => {
-                self.words.insert(key_clone, count);
+                let id = self.idword.len() + 1;
+                self.wordid.insert(key.clone().into().into_boxed_str(), id);
+                self.idword.insert(id, key.clone().into().into_boxed_str());
+                self.wordfreq.insert(key_clone, count);
             }
         }
 
         let key_len = self.string_strategy.len(key.as_ref());
 
-        if key_len as i64 > self.max_length {
-            self.max_length = key_len as i64;
+        if key_len as i32 > self.max_length {
+            self.max_length = key_len as i32;
         }
 
         let edits = self.edits_prefix(key.as_ref());
+        let key_id = self.wordid.get(key.as_ref()).unwrap();
 
         for delete in edits {
             let delete_hash = self.get_string_hash(&delete);
 
             self.deletes
                 .entry(delete_hash)
-                .and_modify(|e| e.push(key.clone().into().into_boxed_str()))
-                .or_insert_with(|| vec![key.clone().into().into_boxed_str()]);
+                .and_modify(|e| e.push(key_id.clone()))
+                .or_insert_with(|| vec![key_id.clone()]);
         }
 
         true
@@ -806,7 +850,7 @@ impl SymSpell {
     fn edits_prefix(&self, key: &str) -> HashSet<String> {
         let mut hash_set = HashSet::new();
 
-        let key_len = self.string_strategy.len(key) as i64;
+        let key_len = self.string_strategy.len(key) as i32;
 
         if key_len <= self.max_dictionary_edit_distance {
             hash_set.insert("".to_string());
@@ -826,7 +870,7 @@ impl SymSpell {
         hash_set
     }
 
-    fn edits(&self, word: &str, edit_distance: i64, delete_words: &mut HashSet<String>) {
+    fn edits(&self, word: &str, edit_distance: i32, delete_words: &mut HashSet<String>) {
         let edit_distance = edit_distance + 1;
         let word_len = self.string_strategy.len(word);
 
@@ -847,12 +891,12 @@ impl SymSpell {
 
     fn has_different_suffix(
         &self,
-        max_edit_distance: i64,
+        max_edit_distance: i32,
         input: &str,
-        input_len: i64,
-        candidate_len: i64,
+        input_len: i32,
+        candidate_len: i32,
         suggestion: &str,
-        suggestion_len: i64,
+        suggestion_len: i32,
     ) -> bool {
         // handles the shortcircuit of min_distance
         // assignment when first boolean expression
@@ -889,8 +933,6 @@ impl SymSpell {
     }
 
     fn get_string_hash(&self, s: &str) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        s.hash(&mut hasher);
-        hasher.finish()
+        xxh64::xxh64(s.as_bytes(), 42)
     }
 }

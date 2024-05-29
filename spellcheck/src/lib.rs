@@ -1,3 +1,4 @@
+use deepsize::DeepSizeOf;
 use graph::Graph;
 use symspell::{Suggestion, SymSpell, Verbosity};
 use tokenizer::Tokenizer;
@@ -8,11 +9,12 @@ extern crate derive_builder;
 
 pub mod symspell;
 
+#[derive(DeepSizeOf)]
 pub struct SpellCheck {
     tokenizer: Tokenizer,
     symspell: SymSpell,
     verbosity: Verbosity,
-    max_edit_distance: i64,
+    max_edit_distance: i32,
 }
 
 impl SpellCheck {
@@ -26,6 +28,10 @@ impl SpellCheck {
             verbosity: Verbosity::Top,
             max_edit_distance: 2,
         }
+    }
+
+    pub fn debug_heap(&self) {
+        self.symspell.debug_heap()
     }
 
     pub fn lookup_word(&self, input: &str) -> Vec<Suggestion> {
