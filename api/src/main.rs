@@ -5,8 +5,9 @@ use serde::Deserialize;
 use spellcheck::SpellCheck;
 use stemmer::Stemmer;
 use tokenizer::Tokenizer;
-use std::{env, net::SocketAddr};
+use std::{env, net::SocketAddr, sync::{Arc, Mutex}};
 use tower_http::cors::{Any, CorsLayer};
+use once_cell::sync::Lazy;
 
 #[derive(Debug, Deserialize)]
 struct Params {
@@ -16,10 +17,12 @@ struct Params {
     tasks: String,
 }
 
+static FEATURES: Lazy<Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>>> = Lazy::new(|| init_features());
 
 async fn kbbi(Json(payload): Json<Params>) -> impl IntoResponse {
     // Here you can handle the POST request, for example:
-    let (tokenizer, stemmer, spellchecker) = init_features();
+    let mutex = &*FEATURES.lock().unwrap();
+    let (tokenizer, stemmer, spellchecker) = mutex;
 
     let mut body = tokenizer.parse(payload.text);
     let mut need_tokenized_output = false;
@@ -50,11 +53,11 @@ async fn kbbi(Json(payload): Json<Params>) -> impl IntoResponse {
     }
 }
 
-fn init_features() -> (Tokenizer, Stemmer, SpellCheck) {
+fn init_features() -> Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>> {
     let tokenizer = Tokenizer::new();
     let stemmer = Stemmer::new("");
     let spellchecker = SpellCheck::new();
-    (tokenizer, stemmer, spellchecker)
+    Arc::new(Mutex::new((tokenizer, stemmer, spellchecker)))
 }
 
 async fn health() -> &'static str {
