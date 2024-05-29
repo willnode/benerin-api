@@ -1,21 +1,21 @@
 use graph::{Graph, Lexeme, Lexicon};
 use postemi::Postemi;
-use sastrawi::Sastrawi;
+// use sastrawi::Sastrawi;
 use std::collections::HashSet;
 use tokenizer::Tokenizer;
 
 mod postemi;
-mod sastrawi;
+// mod sastrawi;
 
 pub struct Stemmer {
     tokenizer: Tokenizer,
     stop_words: HashSet<String>,
-    engine: StemmerEngine,
+    engine: Postemi,
     pub use_stop_words: bool,
 }
 
 enum StemmerEngine {
-    Sastrawi(Sastrawi),
+    // Sastrawi(Sastrawi),
     Postemi(Postemi),
 }
 
@@ -25,27 +25,17 @@ impl Stemmer {
         Stemmer {
             tokenizer: Tokenizer::new(),
             stop_words: benerin_data::get_stop_words_in_hash_set(),
-            engine: if engine == "sastrawi" {
-                StemmerEngine::Sastrawi(Sastrawi::new())
-            } else {
-                StemmerEngine::Postemi(Postemi::new())
-            },
+            engine: Postemi::new(),
             use_stop_words: true,
         }
     }
 
     pub fn stem_word(&self, word: &str) -> String {
-        match &self.engine {
-            StemmerEngine::Postemi(x) => x.stem_word(word).unwrap_or(word).to_owned(),
-            StemmerEngine::Sastrawi(x) => x.stem_word(word),
-        }
+        self.engine.stem_word(word).unwrap_or(word).to_owned()
     }
 
     pub fn stem_word_op(&self, word: &str) -> Option<&str> {
-        match &self.engine {
-            StemmerEngine::Postemi(x) => x.stem_word(word),
-            StemmerEngine::Sastrawi(_) => None, // unimplemented
-        }
+        self.engine.stem_word(word)
     }
 
     pub fn stem(&self, text: &str) -> String {

@@ -1,3 +1,4 @@
+/* 
 use std::collections::HashSet;
 
 use benerin_data::sastrawi::*;
@@ -480,3 +481,4 @@ mod tests {
         assert_eq!(stemming.stem_word("allah-lah"), "allah");
     }
 }
+*/
