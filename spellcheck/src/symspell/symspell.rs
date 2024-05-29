@@ -50,11 +50,11 @@ pub struct SymSpell {
     #[builder(default = "0", setter(skip))]
     max_length: i32,
     #[builder(default = "HashMap::new()", setter(skip))]
-    deletes: HashMap<u64, Vec<usize>>,
+    deletes: HashMap<u64, Vec<u32>>,
     #[builder(default = "HashMap::new()", setter(skip))]
-    idword: HashMap<usize, Box<str>>,
+    idword: HashMap<u32, Box<str>>,
     #[builder(default = "HashMap::new()", setter(skip))]
-    wordid: HashMap<Box<str>, usize>,
+    wordid: HashMap<Box<str>, u32>,
     #[builder(default = "HashMap::new()", setter(skip))]
     wordfreq: HashMap<Box<str>, i32>,
     #[builder(default = "HashMap::new()", setter(skip))]
@@ -819,7 +819,7 @@ impl SymSpell {
                 return false;
             }
             None => {
-                let id = self.idword.len() + 1;
+                let id = self.idword.len() as u32 + 1;
                 self.wordid.insert(key.clone().into().into_boxed_str(), id);
                 self.idword.insert(id, key.clone().into().into_boxed_str());
                 self.wordfreq.insert(key_clone, count);
