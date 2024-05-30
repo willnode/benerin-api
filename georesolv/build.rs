@@ -3,16 +3,10 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 fn main() {
-    // Run the build_libpostal.sh script
-    let output = Command::new("sh")
-        .arg("build_libpostal.sh")
-        .stdout(Stdio::piped())
-        .output()
-        .expect("Failed to run build_libpostal.sh");
+    let dir_var = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let dir = Path::new(&dir_var);
 
-    // Capture the output from the script
-    let output_str = String::from_utf8(output.stdout).expect("Failed to parse script output");
-    let libpostal_dir = output_str.trim();
+    let libpostal_dir = dir.join("libpostal").trim();
 
     // Check if libpostal directory exists
     assert!(Path::new(libpostal_dir).exists(), "libpostal directory does not exist");

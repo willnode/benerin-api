@@ -12,7 +12,7 @@ if [ ! -d "$LIBPOSTAL_DIR" ]; then
 fi
 
 # Change to the libpostal directory
-cd libpostal
+pushd libpostal
 
 # Build libpostal if it's not already built
 if [ ! -f "src/.libs/libpostal.a" ]; then
@@ -21,5 +21,6 @@ if [ ! -f "src/.libs/libpostal.a" ]; then
     make -j$(nproc)
 fi
 
+popd
 # Print the absolute path of the libpostal directory
 echo $(pwd)
