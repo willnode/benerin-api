@@ -12,10 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "addressing"
-version = "0.1.0"
-
-[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -342,6 +338,13 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "pin-utils",
+]
+
+[[package]]
+name = "georesolv"
+version = "0.1.0"
+dependencies = [
+ "rustpostal",
 ]
 
 [[package]]
@@ -706,6 +709,16 @@ name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d626bb9dae77e28219937af045c257c28bfd3f69333c512553507f5f9798cb76"
+
+[[package]]
+name = "rustpostal"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c866d70bc0eb7838c4dfef80f39093dc714685cc70571a2804900b5f76894a2"
+dependencies = [
+ "bitflags 1.3.2",
+ "libc",
+]
 
 [[package]]
 name = "rustversion"

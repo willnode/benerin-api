@@ -1,6 +1,7 @@
 [package]
-name = "addressing"
+name = "georesolv"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+rustpostal = "0.3.0"

@@ -37,7 +37,7 @@ struct Params {
 
 static FEATURES: Lazy<Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>>> = Lazy::new(|| init_features());
 
-async fn kbbi(Json(payload): Json<Params>) -> impl IntoResponse {
+async fn tokenizer(Json(payload): Json<Params>) -> impl IntoResponse {
     // Here you can handle the POST request, for example:
     let mutex = &*FEATURES.lock().unwrap();
     let (tokenizer, stemmer, spellchecker) = mutex;
@@ -73,6 +73,10 @@ async fn kbbi(Json(payload): Json<Params>) -> impl IntoResponse {
         res.headers_mut().insert(header::CONTENT_TYPE, mime);
         res
     }
+}
+
+async fn postal(Json(payload): Json<Params>)-> impl IntoResponse {
+
 }
 
 fn init_features() -> Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>> {
@@ -125,7 +129,7 @@ async fn main() {
             }),
         )
         .route("/", get(Redirect::to("/swagger")))
-        .route("/", post(kbbi).layer(cors))
+        .route("/", post(tokenizer).layer(cors))
         .route("/health", get(health));
     let addr_str = env::var("LISTEN").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
     let addr: SocketAddr = addr_str.parse().unwrap();

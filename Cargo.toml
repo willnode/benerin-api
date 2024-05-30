@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [ "addressing", "api", "grammar", "graph", "spellcheck", "stemmer", "tokenizer", ]
+members = [ "georesolv", "api", "grammar", "graph", "spellcheck", "stemmer", "tokenizer", ]
 
 [profile.release]
 strip = true 
