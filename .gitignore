@@ -6,5 +6,5 @@ __pycache__
 *.csv
 !dt-*.csv
 .DS_Store
-postal/libpostal
-postal/libpostal_data
+libpostal
+libpostal_data
