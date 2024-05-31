@@ -345,6 +345,8 @@ name = "georesolv"
 version = "0.1.0"
 dependencies = [
  "rustpostal",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

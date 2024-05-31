@@ -11,16 +11,14 @@ if [ ! -d "$LIBPOSTAL_DIR" ]; then
     git clone https://github.com/openvenues/libpostal
 fi
 
-# Change to the libpostal directory
-pushd libpostal
+cd libpostal
 
 # Build libpostal if it's not already built
 if [ ! -f "src/.libs/libpostal.a" ]; then
     ./bootstrap.sh
-    ./configure --datadir="$DATA_DIR"
+    ./configure --prefix=$HOME/.local --datadir="$DATA_DIR"
     make -j$(nproc)
+    make install
 fi
 
-popd
-# Print the absolute path of the libpostal directory
-echo $(pwd)
+cd ..
