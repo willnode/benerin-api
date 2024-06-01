@@ -17,7 +17,7 @@ impl Postal {
     }
 
     pub fn parse(&self, s: &str) -> AddressEntity {
-        address::parse_address(s, Some("id"), Some("id")).unwrap();
+        let labeled_tokens = address::parse_address(s, Some("id"), Some("id")).unwrap();
         AddressEntity::from_parsed(labeled_tokens)
     }
 }

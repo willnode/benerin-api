@@ -33,6 +33,7 @@ dependencies = [
  "axum",
  "axum-swagger-ui",
  "deepsize",
+ "georesolv",
  "graph",
  "hyper",
  "once_cell",

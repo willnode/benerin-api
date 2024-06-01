@@ -5,11 +5,11 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/": {
+    "/tokenize": {
       "post": {
-        "summary": "Process text",
-        "description": "Processes text with specified tasks such as stemming or spellcheck. Use tokenize to respond with JSON.",
-        "operationId": "processText",
+        "summary": "Tokenize text",
+        "description": "Processes text with specified tasks such as stemming or spellcheck. Add 'tokenize' to respond as JSON.",
+        "operationId": "tokenizeText",
         "requestBody": {
           "required": true,
           "content": {
@@ -85,6 +85,127 @@
                     "lexicons",
                     "using_keys"
                   ]
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "tags": [
+          "Text Processing"
+        ]
+      }
+    },
+    "/postal": {
+      "post": {
+        "summary": "Parse postal text",
+        "description": "Parses Indonesian Address.",
+        "operationId": "postalText",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "example": "Jl. Hayamwuruk, Jakarta",
+                    "description": "Input text"
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "house": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "near": {
+                      "type": "string"
+                    },
+                    "house_number": {
+                      "type": "string"
+                    },
+                    "road": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "level": {
+                      "type": "string"
+                    },
+                    "staircase": {
+                      "type": "string"
+                    },
+                    "entrance": {
+                      "type": "string"
+                    },
+                    "po_box": {
+                      "type": "string"
+                    },
+                    "postcode": {
+                      "type": "string"
+                    },
+                    "suburb": {
+                      "type": "string"
+                    },
+                    "city_district": {
+                      "type": "string"
+                    },
+                    "city": {
+                      "type": "string"
+                    },
+                    "island": {
+                      "type": "string"
+                    },
+                    "state_district": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "country_region": {
+                      "type": "string"
+                    },
+                    "country": {
+                      "type": "string"
+                    },
+                    "world_region": {
+                      "type": "string"
+                    }
+                  },
+                  "required": []
                 }
               },
               "text/plain": {

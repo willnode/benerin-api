@@ -6,6 +6,7 @@ use axum::{
 };
 use axum_swagger_ui::swagger_ui;
 use deepsize::DeepSizeOf;
+use georesolv::Postal;
 use graph::{Graph, Lexicon};
 use hyper::{
     header::{self, ACCEPT, CONTENT_TYPE},
@@ -35,11 +36,14 @@ struct Params {
     lexicons: Option<Vec<Lexicon>>,
 }
 
-static FEATURES: Lazy<Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>>> = Lazy::new(|| init_features());
+static TOKENIZER_ENGINE: Lazy<Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>>> =
+    Lazy::new(|| init_tokenizer());
+
+static RESOLVER_ENGINE: Lazy<Arc<Mutex<Postal>>> = Lazy::new(|| init_resolver());
 
 async fn tokenizer(Json(payload): Json<Params>) -> impl IntoResponse {
     // Here you can handle the POST request, for example:
-    let mutex = &*FEATURES.lock().unwrap();
+    let mutex = &*TOKENIZER_ENGINE.lock().unwrap();
     let (tokenizer, stemmer, spellchecker) = mutex;
 
     let mut body = match payload.lexicons {
@@ -75,22 +79,41 @@ async fn tokenizer(Json(payload): Json<Params>) -> impl IntoResponse {
     }
 }
 
-async fn postal(Json(payload): Json<Params>)-> impl IntoResponse {
-
+async fn postal(Json(payload): Json<Params>) -> impl IntoResponse {
+    let mutex = &*RESOLVER_ENGINE.lock().unwrap();
+    let body = mutex.parse(&payload.text);
+    let body_str = serde_json::to_string(&body).unwrap();
+    let mut res = Response::new(body_str);
+    let mime = HeaderValue::from_static("application/json");
+    res.headers_mut().insert(header::CONTENT_TYPE, mime);
+    res
 }
 
-fn init_features() -> Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>> {
+fn init_tokenizer() -> Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>> {
     let start = Instant::now();
     let tokenizer = Tokenizer::new();
     let stemmer = Stemmer::new();
     let spellcheck = SpellCheck::new();
+    let georesolv = SpellCheck::new();
     let duration = start.elapsed();
 
     println!("Initialization took: {:.2?} seconds", duration);
-    println!("Spellcheck heap: {:.2?} MB", spellcheck.deep_size_of() / 1024 / 1024);
+    println!(
+        "Spellcheck heap: {:.2?} MB",
+        spellcheck.deep_size_of() / 1024 / 1024
+    );
     spellcheck.debug_heap();
 
     Arc::new(Mutex::new((tokenizer, stemmer, spellcheck)))
+}
+
+fn init_resolver() -> Arc<Mutex<Postal>> {
+    let start = Instant::now();
+    let postal = Postal::new();
+
+    println!("Initialization took: {:.2?} seconds", duration);
+
+    Arc::new(Mutex::new(postal))
 }
 
 async fn health() -> &'static str {
@@ -100,7 +123,7 @@ async fn health() -> &'static str {
 #[tokio::main]
 async fn main() {
     {
-        let _ = &*FEATURES.lock().unwrap();
+        let _ = &*TOKENIZER_ENGINE.lock().unwrap();
     }
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
@@ -130,6 +153,8 @@ async fn main() {
         )
         .route("/", get(Redirect::to("/swagger")))
         .route("/", post(tokenizer).layer(cors))
+        .route("/tokenize", post(tokenizer).layer(cors))
+        .route("/postal", post(postal).layer(cors))
         .route("/health", get(health));
     let addr_str = env::var("LISTEN").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
     let addr: SocketAddr = addr_str.parse().unwrap();

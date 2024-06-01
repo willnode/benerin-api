@@ -72,7 +72,7 @@ impl AddressEntity {
 
     pub fn from_parsed(parsed: AddressParserResponse) -> AddressEntity {
         let r = AddressEntity::empty();
-        for (token, label) in &labeled_tokens {
+        for (&token, label) in parsed {
             match token {
                 "house" => r.house = label,
                 "category" => r.category = label,
