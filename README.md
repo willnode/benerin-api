@@ -23,9 +23,9 @@ Memproses teks alamat indonesia menjadi entity yang terpisah seperti nama jalan,
 
 ## Demo dan Repo
 
-API ini bersifat publik pada endpoint berikut (api.benerin.web.id)[https://api.benerin.web.id]. Membuka laman API berikut akan membuka laman Swagger API.
+API ini bersifat publik pada endpoint berikut [api.benerin.web.id](https://api.benerin.web.id). Membuka laman API berikut akan membuka laman Swagger API.
 
-Terdapat pula contoh demo website yang dapat menggunakan API di laman (benerin.web.id)[https://benerin.web.id].
+Terdapat pula contoh demo website yang dapat menggunakan API di laman [benerin.web.id](https://benerin.web.id).
 
 Repo untuk dataset dan demo website merupakan repo terpisah dan dapat dijumpai di [willnode/benerin-data](https://github.com/willnode/benerin-data) dan [willnode/benerin-web](https://github.com/willnode/benerin-web).
 
