@@ -1,5 +1,5 @@
 use rustpostal::address::AddressParserResponse;
-
+use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AddressEntity {
     #[serde(skip_serializing_if = "str_is_empty")]
@@ -71,9 +71,9 @@ impl AddressEntity {
     }
 
     pub fn from_parsed(parsed: AddressParserResponse) -> AddressEntity {
-        let r = AddressEntity::empty();
-        for (&token, label) in parsed {
-            match token {
+        let mut r = AddressEntity::empty();
+        for (token, label) in parsed {
+            match token.as_str() {
                 "house" => r.house = label,
                 "category" => r.category = label,
                 "near" => r.near = label,
@@ -94,13 +94,13 @@ impl AddressEntity {
                 "country_region" => r.country_region = label,
                 "country" => r.country = label,
                 "world_region" => r.world_region = label,
+                _ => {}
             }
         }
         r
     }
 }
 
-
-fn metadata_is_empty(str: &String) -> bool {
-   str == ""
+fn str_is_empty(str: &String) -> bool {
+    str == ""
 }

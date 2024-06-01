@@ -4,16 +4,14 @@ use types::AddressEntity;
 
 mod types;
 
-pub struct Postal {
-    postal: LibModules,
-}
+pub struct Postal {}
 
 impl Postal {
     pub fn new() -> Postal {
         let postal = LibModules::All;
 
         postal.setup().unwrap();
-        Postal { postal }
+        Postal {}
     }
 
     pub fn parse(&self, s: &str) -> AddressEntity {
@@ -31,6 +29,5 @@ mod tests {
         let p = Postal::new();
         let labeled_tokens =
             p.parse("Jl. Kapten Soebianto Djojohadikusumo, BSD, Serpong, Tangerang Selatan");
-        
     }
 }

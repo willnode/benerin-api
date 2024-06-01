@@ -110,6 +110,7 @@ fn init_tokenizer() -> Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>> {
 fn init_resolver() -> Arc<Mutex<Postal>> {
     let start = Instant::now();
     let postal = Postal::new();
+    let duration = start.elapsed();
 
     println!("Initialization took: {:.2?} seconds", duration);
 
@@ -152,9 +153,9 @@ async fn main() {
             }),
         )
         .route("/", get(Redirect::to("/swagger")))
-        .route("/", post(tokenizer).layer(cors))
-        .route("/tokenize", post(tokenizer).layer(cors))
-        .route("/postal", post(postal).layer(cors))
+        .route("/", post(tokenizer).layer(cors.clone()))
+        .route("/tokenize", post(tokenizer).layer(cors.clone()))
+        .route("/postal", post(postal).layer(cors.clone()))
         .route("/health", get(health));
     let addr_str = env::var("LISTEN").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
     let addr: SocketAddr = addr_str.parse().unwrap();

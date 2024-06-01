@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 rustpostal = "0.3.0"
 serde_json = "1.0.103"
-serde = { version = "1.0.174", features = ["derive"] }
+serde = { version = "1.0.197", features = ["derive"] }
