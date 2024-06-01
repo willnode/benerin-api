@@ -6,12 +6,16 @@ One-stop library dan API untuk berbagai task tentang NLP dalam bahasa Indonesia 
 
 ### Tokenisasi `/tokenize`
 
-Memproses teks indonesia menjadi token yang dapat di-index. Proses ini juga dapat melakukan normalisasi, stemming dan spellchecking. Use case meliputi:
+Memproses teks indonesia menjadi token yang dapat di-index. Proses ini juga dapat melakukan normalisasi, stemming, spellcheck, deteksi*, ekstrasi* dan analisis*. Use case meliputi:
 
 - Membangun fitur pencarian di website dengan akurat
 - Membangun fitur spell-checking untuk mendeteksi typo di teks editor
 - Mendeteksi perbedaan antara dua teks dengan pendekatan token
-- Mendeteksi kata non formal, kata slang, singkatan, nama daerah, nama orang, dll (coming soon!)
+- Analisis sentimen, kalimat spam, tidak pantas, dll (coming soon!)
+- Mendeteksi kata non formal, kata slang, singkatan (coming soon!)
+- Ekstraksi data biografis seperti alamat, nama, kontak, dll (coming soon!)
+
+*) Coming soon.
 
 ### Postal `/postal`
 
