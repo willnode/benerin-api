@@ -4,14 +4,17 @@ use types::AddressEntity;
 
 mod types;
 
-pub struct Postal {}
+pub struct Postal {
+    postal: LibModules
+}
 
 impl Postal {
     pub fn new() -> Postal {
-        let postal = LibModules::All;
-
+        let postal = LibModules::Address;
         postal.setup().unwrap();
-        Postal {}
+        Postal {
+            postal
+        }
     }
 
     pub fn parse(&self, s: &str) -> AddressEntity {

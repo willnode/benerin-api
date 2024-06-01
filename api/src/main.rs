@@ -94,7 +94,6 @@ fn init_tokenizer() -> Arc<Mutex<(Tokenizer, Stemmer, SpellCheck)>> {
     let tokenizer = Tokenizer::new();
     let stemmer = Stemmer::new();
     let spellcheck = SpellCheck::new();
-    let georesolv = SpellCheck::new();
     let duration = start.elapsed();
 
     println!("Initialization took: {:.2?} seconds", duration);
@@ -125,6 +124,7 @@ async fn health() -> &'static str {
 async fn main() {
     {
         let _ = &*TOKENIZER_ENGINE.lock().unwrap();
+        let _ = &*RESOLVER_ENGINE.lock().unwrap();
     }
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
