@@ -33,6 +33,8 @@ Terdapat pula contoh demo website yang dapat menggunakan API di laman [benerin.w
 
 Repo untuk dataset dan demo website merupakan repo terpisah dan dapat dijumpai di [willnode/benerin-data](https://github.com/willnode/benerin-data) dan [willnode/benerin-web](https://github.com/willnode/benerin-web).
 
+Benerin API publik di hosting dengan [DOM Cloud](https://domcloud.co). Saat ini jika endpoint tidak di hit >15 menit, app nya perlu dinyalain lagi dengan load data yang berat lagi (sekitar 1 GB) dan kadang bisa sampai timeout karena libpostal butuh banyak memori untuk load data. Masalah ini akan dioptimasi lagi nanti.
+
 ## Kontribusi
 
 Kami terbuka untuk kontribusi! Anda juga dapat memberi ide use case baru yang menarik untuk dijadikan API melalui GitHub issues.
